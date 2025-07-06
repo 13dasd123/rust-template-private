@@ -9,7 +9,7 @@
     },
     {
       "Level": 2,
-      "Name": "Rust Errors",
+      "Name": "Critical Compiler Errors",
       "Rules": [
         "RUST007",
         "RUST0004",

@@ -11,6 +11,8 @@
       "Level": 2,
       "Name": "Critical Compiler Errors",
       "Rules": [
+        "CS0260",
+        "CS0262",
         "RUST007",
         "RUST0004",
         "RUST000050",

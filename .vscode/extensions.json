@@ -1,7 +1,6 @@
 {
   "recommendations": [
     "ms-dotnettools.csharp",
-    "emeraldwalk.runonsave",
     "csharpier.csharpier-vscode"
   ]
 }

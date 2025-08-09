@@ -138,6 +138,16 @@ public class BufferList<T> : IEnumerable<T>, IEnumerable
 		count++;
 	}
 
+	public void AddRange(BufferList<T> elements)
+	{
+		if (count + elements.count > buffer.Length)
+		{
+			Resize(Math.Max(count + elements.count, 8));
+		}
+		Array.Copy(elements.buffer, 0, buffer, count, elements.count);
+		count += elements.count;
+	}
+
 	public bool Remove(T element)
 	{
 		int num = Array.IndexOf(buffer, element);
@@ -929,12 +939,27 @@ public class ListHashSet<T> : IEnumerable<T>, IEnumerable, IList<T>, ICollection
 		return value;
 	}
 
-	public void Insert(int index, T item)
+	public void ReplaceAt(int index, T item)
 	{
 		T key = vals[index];
 		val2idx.Remove(key);
 		val2idx.Add(item, index);
 		vals[index] = item;
+		idx2val[index] = item;
+	}
+
+	public void Insert(int index, T item)
+	{
+		vals.Add(default(T));
+		for (int num = vals.Count - 1; num > index; num--)
+		{
+			T val = vals[num - 1];
+			vals[num] = val;
+			val2idx[val] = num;
+			idx2val[num] = val;
+		}
+		vals[index] = item;
+		val2idx[item] = index;
 		idx2val[index] = item;
 	}
 
@@ -4480,6 +4505,31 @@ public readonly struct StringView
 			return false;
 		}
 		throw new ArgumentException($"Unsupported type for equality check! Other object was {obj.GetType()}");
+	}
+
+	public bool Equals(string other)
+	{
+		if (other == null || other.Length != Length)
+		{
+			return false;
+		}
+		for (int i = 0; i < Length; i++)
+		{
+			if (_source[_start + i] != other[i])
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	public bool Equals(char other)
+	{
+		if (Length == 1)
+		{
+			return _source[_start] == other;
+		}
+		return false;
 	}
 
 	public bool Equals(StringView otherSv)

@@ -1,3 +1,1545 @@
+using Rust.UI;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+public class LoadingScreen : SingletonComponent<LoadingScreen>
+{
+	private bool _isOpen;
+
+	[Header("Loading Screen References - UI")]
+	public CanvasGroup panel;
+
+	public CanvasGroup blackout;
+
+	public NeedsCursor needsCursor;
+
+	public TextMeshProUGUI title;
+
+	public TextMeshProUGUI subtitle;
+
+	public RawImage backgroundImage;
+
+	public Texture2D defaultBackground;
+
+	public GameObject infoHeader;
+
+	public GameObject demoBlock;
+
+	public GameObject serverBlock;
+
+	public RustButton cancelButton;
+
+	[Header("Loading Screen References - Server Info")]
+	public RustText serverName;
+
+	public RustText serverPlayers;
+
+	public RustText serverMode;
+
+	public RustText serverMap;
+
+	public RustText serverWiped;
+
+	public HttpImage serverLogoImage;
+
+	public ServerBrowserTagList serverTags;
+
+	[Header("Loading Screen References - Demo Info")]
+	public RustText demoName;
+
+	public RustText demoLength;
+
+	public RustText demoDate;
+
+	public RustText demoMap;
+
+	[Header("Loading Screen References - Tips and Warnings")]
+	public MenuTip menuTip;
+
+	public GameObject performanceWarning;
+
+	public GameObject pingWarning;
+
+	public RustText pingWarningText;
+
+	[Header("Loading Screen References - Audio")]
+	public AudioSource music;
+
+	[Tooltip("Ping must be at least this many ms higher than the server browser ping")]
+	[Header("Loading Screen References - Settings")]
+	public int minPingDiffToShowWarning = 50;
+
+	[Tooltip("Ping must be this many times higher than the server browser ping")]
+	public float pingDiffFactorToShowWarning = 2f;
+
+	[Tooltip("Number of ping samples required before showing the warning")]
+	public int requiredPingSampleCount = 10;
+
+	public static Phrase pingWarningPhrase = new Phrase("loading.ping-warning", "<color=#FFF><size=20>PING WARNING</size></color>\nThis server's ping on the server browser ({0} ms) is much lower than the ping you are getting after connecting to the server ({1} ms). This could mean that this server is located far away and you will have a less than ideal playing experience while on this server.");
+
+	public static Phrase vanillaPhrase = new Phrase("loading.mode.vanilla", "vanilla");
+
+	public static bool isOpen
+	{
+		get
+		{
+			if ((Object)(object)SingletonComponent<LoadingScreen>.Instance != (Object)null)
+			{
+				return SingletonComponent<LoadingScreen>.Instance._isOpen;
+			}
+			return false;
+		}
+	}
+
+	public static string Text { get; private set; }
+
+	public static void Update(string strType)
+	{
+	}
+
+	public static void Update(string strType, string strSubtitle)
+	{
+	}
+}
+
+
+using System;
+using System.Collections.Generic;
+using Development.Attributes;
+using Rust.UI;
+using UnityEngine;
+
+[ResetStaticFields]
+public class MainMenuSystem : SingletonComponent<MainMenuSystem>
+{
+	public static bool isOpen = true;
+
+	public static Action OnOpenStateChanged;
+
+	public RustButton SessionButton;
+
+	public GameObject SessionPanel;
+
+	public GameObject NewsStoriesAlert;
+
+	public GameObject ItemStoreAlert;
+
+	public GameObject CompanionAlert;
+
+	public GameObject DemoBrowser;
+
+	public GameObject DemoBrowserButton;
+
+	public GameObject SuicideButton;
+
+	public GameObject EndDemoButton;
+
+	public List<GameObject> ReturnToOptionsPanels;
+
+	public RustButton OptionsButton;
+
+	public GameObject ReflexModeOption;
+
+	public GameObject ReflexLatencyMarkerOption;
+
+	[SerializeField]
+	private GameObject QuitConfirmation;
+
+	public GameObject QuitTutorialOption;
+
+	[SerializeField]
+	private GameObject Connection;
+
+	[SerializeField]
+	private UISafeZoneWarning safeZoneWarning;
+}
+
+
+using UnityEngine;
+
+public class MenuBackgroundOverride : MonoBehaviour
+{
+	public Texture2D Background;
+
+	public Color Tint = Color.white;
+}
+
+
+public class MenuBackgroundPanel : SingletonComponent<MenuBackgroundPanel>
+{
+	public CoverImage Image;
+
+	public float FadeDuration = 0.15f;
+}
+
+
+using System;
+using System.Collections;
+using System.IO;
+using System.Linq;
+using Rust;
+using UnityEngine;
+using UnityEngine.Video;
+
+public class MenuBackgroundVideo : SingletonComponent<MenuBackgroundVideo>
+{
+	[ClientVar]
+	public static bool RestrictMP4 = true;
+
+	private int index;
+
+	private bool errored;
+
+	private string[] mp4Videos;
+
+	private string[] webmVideos;
+
+	private bool forceWebmOnly;
+
+	private VideoPlayer _videoPlayer;
+
+	protected override void Awake()
+	{
+		//IL_002c: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0033: Invalid comparison between Unknown and I4
+		//IL_0035: Unknown result type (might be due to invalid IL or missing references)
+		//IL_003c: Invalid comparison between Unknown and I4
+		//IL_0052: Unknown result type (might be due to invalid IL or missing references)
+		//IL_005c: Expected O, but got Unknown
+		((SingletonComponent)this).Awake();
+		if (RestrictMP4)
+		{
+			forceWebmOnly = true;
+		}
+		_videoPlayer = ((Component)this).GetComponent<VideoPlayer>();
+		_videoPlayer.source = (VideoSource)1;
+		if ((int)Application.platform == 13 || (int)Application.platform == 16)
+		{
+			forceWebmOnly = true;
+		}
+		_videoPlayer.errorReceived += new ErrorEventHandler(OnVideoError);
+		LoadVideoList();
+		NextVideo();
+	}
+
+	private void OnVideoError(VideoPlayer source, string message)
+	{
+		errored = true;
+		forceWebmOnly = true;
+		_videoPlayer.Stop();
+		NextVideo();
+	}
+
+	public void LoadVideoList()
+	{
+		string path = Path.Combine(Application.streamingAssetsPath, "MenuVideo");
+		string path2 = Path.Combine(path, "mp4");
+		string path3 = Path.Combine(path, "webm");
+		if (Directory.Exists(path2))
+		{
+			mp4Videos = (from x in Directory.EnumerateFiles(path2, "*.mp4")
+				orderby Guid.NewGuid()
+				select x).ToArray();
+		}
+		else
+		{
+			mp4Videos = Array.Empty<string>();
+		}
+		if (Directory.Exists(path3))
+		{
+			webmVideos = (from x in Directory.EnumerateFiles(path3, "*.webm")
+				orderby Guid.NewGuid()
+				select x).ToArray();
+		}
+		else
+		{
+			webmVideos = Array.Empty<string>();
+		}
+	}
+
+	public void Update()
+	{
+		if (Input.GetKeyDown((KeyCode)258))
+		{
+			LoadVideoList();
+		}
+		if (Input.GetKeyDown((KeyCode)257))
+		{
+			NextVideo();
+		}
+	}
+
+	private void NextVideo()
+	{
+		if (Application.isQuitting)
+		{
+			return;
+		}
+		errored = false;
+		string[] array = (forceWebmOnly ? webmVideos : mp4Videos);
+		if (array.Length == 0)
+		{
+			Debug.LogWarning((object)"[MenuBackgroundVideo] No available videos to play.");
+			return;
+		}
+		string text = array[index++ % array.Length];
+		if (!forceWebmOnly && Global.LaunchCountThisVersion <= 3)
+		{
+			string text2 = mp4Videos.FirstOrDefault((string x) => x.EndsWith("whatsnew.mp4", StringComparison.OrdinalIgnoreCase));
+			if (!string.IsNullOrEmpty(text2))
+			{
+				text = text2;
+			}
+		}
+		_videoPlayer.url = "file://" + text;
+		_videoPlayer.Play();
+	}
+
+	internal IEnumerator ReadyVideo()
+	{
+		if (!errored)
+		{
+			if ((Object)(object)_videoPlayer == (Object)null)
+			{
+				_videoPlayer = ((Component)this).GetComponent<VideoPlayer>();
+			}
+			NextVideo();
+			while (!_videoPlayer.isPrepared && !errored)
+			{
+				yield return null;
+			}
+		}
+	}
+
+	[ClientVar]
+	public static void ForceNextVideo()
+	{
+		MenuBackgroundVideo[] array = Object.FindObjectsOfType<MenuBackgroundVideo>();
+		for (int i = 0; i < array.Length; i++)
+		{
+			array[i].NextVideo();
+		}
+	}
+
+	[ClientVar]
+	public static void EmulateError()
+	{
+		Object.FindObjectOfType<MenuBackgroundVideo>().OnVideoError(null, null);
+	}
+}
+
+
+using UnityEngine;
+
+public class MenuServerPanel : MonoBehaviour
+{
+	private void Start()
+	{
+	}
+
+	private void Update()
+	{
+	}
+}
+
+
+using System;
+using System.Collections.Generic;
+using Rust.UI;
+using TMPro;
+using UnityEngine;
+using UnityEngine.EventSystems;
+
+public class NewsParagraph : MonoBehaviour, IPointerClickHandler, IEventSystemHandler
+{
+	public RustText Text;
+
+	public List<string> Links;
+
+	public void OnPointerClick(PointerEventData eventData)
+	{
+		//IL_0017: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0026: Unknown result type (might be due to invalid IL or missing references)
+		//IL_002b: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0065: Unknown result type (might be due to invalid IL or missing references)
+		//IL_006a: Unknown result type (might be due to invalid IL or missing references)
+		if ((Object)(object)Text == (Object)null || Links == null || (int)eventData.button != 0)
+		{
+			return;
+		}
+		int num = TMP_TextUtilities.FindIntersectingLink((TMP_Text)(object)Text, Vector2.op_Implicit(eventData.position), eventData.pressEventCamera);
+		if (num < 0 || num >= ((TMP_Text)Text).textInfo.linkCount)
+		{
+			return;
+		}
+		TMP_LinkInfo val = ((TMP_Text)Text).textInfo.linkInfo[num];
+		if (int.TryParse(((TMP_LinkInfo)(ref val)).GetLinkID(), out var result) && result >= 0 && result < Links.Count)
+		{
+			string text = Links[result];
+			if (text.StartsWith("http", StringComparison.InvariantCultureIgnoreCase))
+			{
+				Application.OpenURL(text);
+			}
+		}
+	}
+}
+
+
+using System;
+using System.Collections.Generic;
+using System.Text;
+using System.Text.RegularExpressions;
+using Facepunch;
+using Facepunch.Extend;
+using Facepunch.Flexbox;
+using Facepunch.Math;
+using Facepunch.Models;
+using Facepunch.Rust;
+using Rust.UI;
+using TMPro;
+using UnityEngine;
+using UnityEngine.Events;
+using UnityEngine.UI;
+
+public class NewsSource : MonoBehaviour
+{
+	private struct ParagraphBuilder
+	{
+		public StringBuilder StringBuilder;
+
+		public List<string> Links;
+
+		public static ParagraphBuilder New()
+		{
+			ParagraphBuilder result = default(ParagraphBuilder);
+			result.StringBuilder = new StringBuilder();
+			result.Links = new List<string>();
+			return result;
+		}
+
+		public void AppendLine()
+		{
+			StringBuilder.AppendLine();
+		}
+
+		public void Append(string text)
+		{
+			StringBuilder.Append(text);
+		}
+	}
+
+	private static readonly Regex BbcodeParse = new Regex("([^\\[]*)(?:\\[(\\w+)(?:=([^\\]]+))?\\](.*?)\\[\\/\\2\\])?", RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.Singleline);
+
+	public RustText title;
+
+	public RustText date;
+
+	public RustText authorName;
+
+	public HttpImage coverImage;
+
+	public RectTransform container;
+
+	public Button button;
+
+	public FlexElement layoutRoot;
+
+	public RustText paragraphTemplate;
+
+	public HttpImage imageTemplate;
+
+	public HttpImage youtubeTemplate;
+
+	private static readonly string[] BulletSeparators = new string[1] { "[*]" };
+
+	public void Awake()
+	{
+		EventRecord eventRecord = EventRecord.New("news", isServer: false);
+		eventRecord.AddField("action", "view");
+		eventRecord.Submit();
+	}
+
+	public void OnEnable()
+	{
+		if (SteamNewsSource.Stories != null && SteamNewsSource.Stories.Length != 0)
+		{
+			SetStory(SteamNewsSource.Stories[0]);
+		}
+	}
+
+	public void SetStory(SteamNewsSource.Story story)
+	{
+		//IL_00b9: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00c3: Expected O, but got Unknown
+		PlayerPrefs.SetInt("lastNewsDate", story.date);
+		TransformEx.DestroyAllChildren((Transform)(object)container, false);
+		((TMP_Text)title).text = story.name;
+		((TMP_Text)authorName).text = "by " + story.author;
+		string text = NumberExtensions.FormatSecondsLong((long)(Epoch.Current - story.date));
+		((TMP_Text)date).text = "Posted " + text + " ago";
+		((UnityEventBase)button.onClick).RemoveAllListeners();
+		((UnityEvent)button.onClick).AddListener((UnityAction)delegate
+		{
+			string text2 = GetBlogPost()?.Url ?? story.url;
+			Debug.Log((object)("Opening URL: " + text2));
+			Application.OpenURL(text2);
+		});
+		string firstImage = GetBlogPost()?.HeaderImage;
+		ParagraphBuilder currentParagraph = ParagraphBuilder.New();
+		ParseBbcode(ref currentParagraph, story.text, ref firstImage);
+		AppendParagraph(ref currentParagraph);
+		if (firstImage != null)
+		{
+			coverImage.Load(firstImage);
+		}
+		BlogInfo GetBlogPost()
+		{
+			Manifest manifest = Application.Manifest;
+			if (manifest == null)
+			{
+				return null;
+			}
+			NewsInfo news = manifest.News;
+			if (news == null)
+			{
+				return null;
+			}
+			BlogInfo[] blogs = news.Blogs;
+			if (blogs == null)
+			{
+				return null;
+			}
+			return List.FindWith<BlogInfo, string>((IReadOnlyCollection<BlogInfo>)(object)blogs, (Func<BlogInfo, string>)((BlogInfo b) => b.Title), story.name, (IEqualityComparer<string>)StringComparer.InvariantCultureIgnoreCase);
+		}
+	}
+
+	private void ParseBbcode(ref ParagraphBuilder currentParagraph, string bbcode, ref string firstImage, int depth = 0)
+	{
+		foreach (Match item in BbcodeParse.Matches(bbcode))
+		{
+			string value = item.Groups[1].Value;
+			string value2 = item.Groups[2].Value;
+			string value3 = item.Groups[3].Value;
+			string value4 = item.Groups[4].Value;
+			currentParagraph.Append(value);
+			switch (value2.ToLowerInvariant())
+			{
+			case "previewyoutube":
+				if (depth == 0)
+				{
+					string[] array2 = value3.Split(';');
+					AppendYouTube(ref currentParagraph, array2[0]);
+				}
+				break;
+			case "h1":
+			case "h2":
+				currentParagraph.Append("<size=200%>");
+				ParseBbcode(ref currentParagraph, value4, ref firstImage, depth + 1);
+				currentParagraph.Append("</size>");
+				break;
+			case "h3":
+				currentParagraph.Append("<size=175%>");
+				ParseBbcode(ref currentParagraph, value4, ref firstImage, depth + 1);
+				currentParagraph.Append("</size>");
+				break;
+			case "h4":
+				currentParagraph.Append("<size=150%>");
+				ParseBbcode(ref currentParagraph, value4, ref firstImage, depth + 1);
+				currentParagraph.Append("</size>");
+				break;
+			case "b":
+				currentParagraph.Append("<b>");
+				ParseBbcode(ref currentParagraph, value4, ref firstImage, depth + 1);
+				currentParagraph.Append("</b>");
+				break;
+			case "u":
+				currentParagraph.Append("<u>");
+				ParseBbcode(ref currentParagraph, value4, ref firstImage, depth + 1);
+				currentParagraph.Append("</u>");
+				break;
+			case "i":
+				currentParagraph.Append("<i>");
+				ParseBbcode(ref currentParagraph, value4, ref firstImage, depth + 1);
+				currentParagraph.Append("</i>");
+				break;
+			case "strike":
+				currentParagraph.Append("<s>");
+				ParseBbcode(ref currentParagraph, value4, ref firstImage, depth + 1);
+				currentParagraph.Append("</s>");
+				break;
+			case "noparse":
+				currentParagraph.Append(value4);
+				break;
+			case "url":
+			{
+				if (value4.Contains("[img]", StringComparison.InvariantCultureIgnoreCase))
+				{
+					ParseBbcode(ref currentParagraph, value4, ref firstImage, depth);
+					break;
+				}
+				int count = currentParagraph.Links.Count;
+				currentParagraph.Links.Add(value3);
+				currentParagraph.Append($"<link={count}><u>");
+				ParseBbcode(ref currentParagraph, value4, ref firstImage, depth + 1);
+				currentParagraph.Append("</u></link>");
+				break;
+			}
+			case "list":
+			{
+				currentParagraph.AppendLine();
+				string[] array = GetBulletPoints(value4);
+				foreach (string text3 in array)
+				{
+					if (!string.IsNullOrWhiteSpace(text3))
+					{
+						currentParagraph.Append("\t• ");
+						ParseBbcode(ref currentParagraph, text3.Trim(), ref firstImage, depth + 1);
+						currentParagraph.AppendLine();
+					}
+				}
+				break;
+			}
+			case "olist":
+			{
+				currentParagraph.AppendLine();
+				string[] bulletPoints = GetBulletPoints(value4);
+				int num = 1;
+				string[] array = bulletPoints;
+				foreach (string text2 in array)
+				{
+					if (!string.IsNullOrWhiteSpace(text2))
+					{
+						currentParagraph.Append($"\t{num++} ");
+						ParseBbcode(ref currentParagraph, text2.Trim(), ref firstImage, depth + 1);
+						currentParagraph.AppendLine();
+					}
+				}
+				break;
+			}
+			case "img":
+				if (depth == 0)
+				{
+					string text = value4.Trim();
+					if (firstImage == null)
+					{
+						firstImage = text;
+					}
+					AppendImage(ref currentParagraph, text);
+				}
+				break;
+			}
+		}
+	}
+
+	private static string[] GetBulletPoints(string listContent)
+	{
+		return listContent?.Split(BulletSeparators, StringSplitOptions.RemoveEmptyEntries) ?? Array.Empty<string>();
+	}
+
+	private void AppendParagraph(ref ParagraphBuilder currentParagraph)
+	{
+		if (currentParagraph.StringBuilder.Length > 0)
+		{
+			string text = currentParagraph.StringBuilder.ToString();
+			RustText obj = Object.Instantiate<RustText>(paragraphTemplate, (Transform)(object)container);
+			ComponentExtensions.SetActive<RustText>(obj, true);
+			obj.SetText(text);
+			NewsParagraph newsParagraph = default(NewsParagraph);
+			if (((Component)obj).TryGetComponent<NewsParagraph>(ref newsParagraph))
+			{
+				newsParagraph.Links = currentParagraph.Links;
+			}
+		}
+		currentParagraph = ParagraphBuilder.New();
+	}
+
+	private void AppendImage(ref ParagraphBuilder currentParagraph, string url)
+	{
+		AppendParagraph(ref currentParagraph);
+		HttpImage obj = Object.Instantiate<HttpImage>(imageTemplate, (Transform)(object)container);
+		ComponentExtensions.SetActive<HttpImage>(obj, true);
+		obj.Load(url);
+	}
+
+	private void AppendYouTube(ref ParagraphBuilder currentParagraph, string videoId)
+	{
+		//IL_0069: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0073: Expected O, but got Unknown
+		AppendParagraph(ref currentParagraph);
+		HttpImage obj = Object.Instantiate<HttpImage>(youtubeTemplate, (Transform)(object)container);
+		ComponentExtensions.SetActive<HttpImage>(obj, true);
+		obj.Load("https://img.youtube.com/vi/" + videoId + "/maxresdefault.jpg");
+		RustButton component = ((Component)obj).GetComponent<RustButton>();
+		if ((Object)(object)component != (Object)null)
+		{
+			string videoUrl = "https://www.youtube.com/watch?v=" + videoId;
+			component.OnReleased.AddListener((UnityAction)delegate
+			{
+				Debug.Log((object)("Opening URL: " + videoUrl));
+				Application.OpenURL(videoUrl);
+			});
+		}
+	}
+}
+
+
+using System.Collections.Generic;
+using System.Text;
+
+private struct ParagraphBuilder
+{
+	public StringBuilder StringBuilder;
+
+	public List<string> Links;
+
+	public static ParagraphBuilder New()
+	{
+		ParagraphBuilder result = default(ParagraphBuilder);
+		result.StringBuilder = new StringBuilder();
+		result.Links = new List<string>();
+		return result;
+	}
+
+	public void AppendLine()
+	{
+		StringBuilder.AppendLine();
+	}
+
+	public void Append(string text)
+	{
+		StringBuilder.Append(text);
+	}
+}
+
+
+using System.Collections;
+using System.Collections.Generic;
+using JSON;
+using UnityEngine;
+
+public static class SteamNewsSource
+{
+	public struct Story
+	{
+		public string name;
+
+		public string url;
+
+		public int date;
+
+		public string text;
+
+		public string author;
+	}
+
+	public static Story[] Stories;
+
+	public static IEnumerator GetStories()
+	{
+		WWW www = new WWW("https://api.steampowered.com/ISteamNews/GetNewsForApp/v0002/?appid=252490&count=8&format=json&feeds=steam_community_announcements");
+		yield return www;
+		Object val = Object.Parse(www.text);
+		www.Dispose();
+		if (val == null)
+		{
+			yield break;
+		}
+		Array array = val.GetObject("appnews").GetArray("newsitems");
+		List<Story> list = new List<Story>();
+		foreach (Value item in array)
+		{
+			string @string = item.Obj.GetString("contents", "Missing Contents");
+			@string = @string.Replace("\\n", "\n").Replace("\\r", "").Replace("\\\"", "\"");
+			list.Add(new Story
+			{
+				name = item.Obj.GetString("title", "Missing Title"),
+				url = item.Obj.GetString("url", "Missing URL"),
+				date = item.Obj.GetInt("date", 0),
+				text = @string,
+				author = item.Obj.GetString("author", "Missing Author")
+			});
+		}
+		Stories = list.ToArray();
+	}
+}
+
+
+public struct Story
+{
+	public string name;
+
+	public string url;
+
+	public int date;
+
+	public string text;
+
+	public string author;
+}
+
+
+using Facepunch.Extend;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+public class ToggleHUDLayer : MonoBehaviour, IClientComponent
+{
+	public Toggle toggleControl;
+
+	public TextMeshProUGUI textControl;
+
+	public string hudComponentName;
+
+	protected void OnEnable()
+	{
+		UIHUD instance = SingletonComponent<UIHUD>.Instance;
+		if (!((Object)(object)instance != (Object)null))
+		{
+			return;
+		}
+		Transform val = TransformEx.FindChildRecursive(((Component)instance).transform, hudComponentName);
+		if ((Object)(object)val != (Object)null)
+		{
+			Canvas component = ((Component)val).GetComponent<Canvas>();
+			if ((Object)(object)component != (Object)null)
+			{
+				toggleControl.isOn = ((Behaviour)component).enabled;
+			}
+			else
+			{
+				toggleControl.isOn = ((Component)val).gameObject.activeSelf;
+			}
+		}
+		else
+		{
+			Debug.LogWarning((object)(((object)this).GetType().Name + ": Couldn't find child: " + hudComponentName));
+		}
+	}
+
+	public void OnToggleChanged()
+	{
+		//IL_0000: Unknown result type (might be due to invalid IL or missing references)
+		ConsoleSystem.Run(Option.Client, "global.hudcomponent", new object[2] { hudComponentName, toggleControl.isOn });
+	}
+}
+
+
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+public class ToggleLayer : MonoBehaviour, IClientComponent
+{
+	public Toggle toggleControl;
+
+	public TextMeshProUGUI textControl;
+
+	public LayerSelect layer;
+
+	protected void OnEnable()
+	{
+		if (Object.op_Implicit((Object)(object)MainCamera.mainCamera))
+		{
+			toggleControl.isOn = (MainCamera.mainCamera.cullingMask & layer.Mask) != 0;
+		}
+	}
+
+	public void OnToggleChanged()
+	{
+		if (Object.op_Implicit((Object)(object)MainCamera.mainCamera))
+		{
+			if (toggleControl.isOn)
+			{
+				Camera mainCamera = MainCamera.mainCamera;
+				mainCamera.cullingMask |= layer.Mask;
+			}
+			else
+			{
+				Camera mainCamera2 = MainCamera.mainCamera;
+				mainCamera2.cullingMask &= ~layer.Mask;
+			}
+		}
+	}
+
+	protected void OnValidate()
+	{
+		if (Object.op_Implicit((Object)(object)textControl))
+		{
+			((TMP_Text)textControl).text = layer.Name;
+		}
+	}
+}
+
+
+using UnityEngine;
+using UnityEngine.UI;
+
+public class ToggleTerrainRenderer : MonoBehaviour
+{
+	public Toggle toggleControl;
+
+	public Text textControl;
+
+	protected void OnEnable()
+	{
+		if (Object.op_Implicit((Object)(object)Terrain.activeTerrain))
+		{
+			toggleControl.isOn = Terrain.activeTerrain.drawHeightmap;
+		}
+	}
+
+	public void OnToggleChanged()
+	{
+		if (Object.op_Implicit((Object)(object)Terrain.activeTerrain))
+		{
+			Terrain.activeTerrain.drawHeightmap = toggleControl.isOn;
+		}
+	}
+
+	protected void OnValidate()
+	{
+		if (Object.op_Implicit((Object)(object)textControl))
+		{
+			textControl.text = "Terrain Renderer";
+		}
+	}
+}
+
+
+using UnityEngine;
+using UnityEngine.UI;
+
+public class ToggleTerrainTrees : MonoBehaviour
+{
+	public Toggle toggleControl;
+
+	public Text textControl;
+
+	protected void OnEnable()
+	{
+		if (Object.op_Implicit((Object)(object)Terrain.activeTerrain))
+		{
+			toggleControl.isOn = Terrain.activeTerrain.drawTreesAndFoliage;
+		}
+	}
+
+	public void OnToggleChanged()
+	{
+		if (Object.op_Implicit((Object)(object)Terrain.activeTerrain))
+		{
+			Terrain.activeTerrain.drawTreesAndFoliage = toggleControl.isOn;
+		}
+	}
+
+	protected void OnValidate()
+	{
+		if (Object.op_Implicit((Object)(object)textControl))
+		{
+			textControl.text = "Terrain Trees";
+		}
+	}
+}
+
+
+using System;
+using UnityEngine;
+
+public class TweakUI : SingletonComponent<TweakUI>
+{
+	public static bool isOpen;
+
+	private void Update()
+	{
+		if (Input.GetKeyDown((KeyCode)283) && CanToggle())
+		{
+			SetVisible(!isOpen);
+		}
+	}
+
+	protected bool CanToggle()
+	{
+		if (!LevelManager.isLoaded)
+		{
+			return false;
+		}
+		return true;
+	}
+
+	public void SetVisible(bool b)
+	{
+		//IL_0010: Unknown result type (might be due to invalid IL or missing references)
+		if (b)
+		{
+			isOpen = true;
+			return;
+		}
+		isOpen = false;
+		ConsoleSystem.Run(Option.Client, "writecfg", Array.Empty<object>());
+	}
+}
+
+
+using Rust.UI.MainMenu;
+using UnityEngine.UI;
+
+public class TweakUIMultiSelect : UI_SettingsTweakConvar
+{
+	public ToggleGroup toggleGroup;
+}
+
+
+using System.Threading;
+using Rust.UI;
+using UnityEngine;
+
+public class PartyInviteModal : SingletonComponent<PartyInviteModal>
+{
+	public RustText InviteLabel;
+
+	public RustButton AcceptButton;
+
+	public static Phrase InvitePhrase = new Phrase("party.invite", "{0} has invited you to a party");
+
+	private ulong pendingLobbyId;
+
+	private TimeSince age;
+
+	public HttpImage ProfilePicture;
+
+	public RectTransform ProgressBar;
+
+	private CancellationTokenSource cancel;
+
+	private ulong lastUserId;
+
+	public bool IsShown => ((Component)this).gameObject.activeInHierarchy;
+
+	public void Show(string username, ulong userId, ulong lobbyId)
+	{
+	}
+
+	public void OnClientStartup()
+	{
+		//IL_000e: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0013: Unknown result type (might be due to invalid IL or missing references)
+		if (lastUserId != 0L)
+		{
+			age = TimeSince.op_Implicit(0f);
+		}
+	}
+
+	public void Hide()
+	{
+	}
+
+	public void OnAcceptButtonClicked()
+	{
+	}
+}
+
+
+using System;
+using Rust.UI;
+using UnityEngine;
+using UnityEngine.UI;
+
+public class PremiumModal : SingletonComponent<PremiumModal>
+{
+	public RustText UsernameLabel;
+
+	public RustText MoneyLabel;
+
+	public RustText ActiveStatusLabel;
+
+	public RawImage ProfilePicture;
+
+	public RustButton RefreshButton;
+
+	public Phrase ActivePhrase;
+
+	public Phrase InactivePhrase;
+
+	public Phrase SearchingPhrase;
+
+	public static Phrase ErrorPhrase = new Phrase("premium.error", "Error");
+
+	public GameObject[] BackgroundImages;
+
+	public static TimeSpan ButtonTimeout = TimeSpan.FromSeconds(65.0);
+
+	public void Open()
+	{
+	}
+
+	public void Close()
+	{
+	}
+
+	private void UpdateInfo()
+	{
+	}
+
+	public void RefreshButtonClicked()
+	{
+	}
+}
+
+
+using Rust.UI;
+using UnityEngine;
+
+public class ServerBrowser : MonoBehaviour
+{
+	public string orderBy = "pingDesc";
+
+	public RustButton cacheBrowserToggle;
+
+	public RustButton filterTutorialButton;
+
+	public GameObject pingEstimationButton;
+}
+
+
+using Rust.UI;
+using UnityEngine;
+
+public class ServerBrowserCategory : MonoBehaviour
+{
+	public RustText serverCountText;
+
+	public bool useServerCount;
+}
+
+
+public static class ServerBrowserEx
+{
+	public static string GetPingString(this ServerInfo server)
+	{
+		if (((ServerInfo)(ref server)).Ping != int.MaxValue)
+		{
+			return ((ServerInfo)(ref server)).Ping.ToString();
+		}
+		return "?";
+	}
+}
+
+
+using Rust.UI;
+using UnityEngine.UI;
+
+public class ServerBrowserInfo : SingletonComponent<ServerBrowserInfo>
+{
+	public bool isMain;
+
+	public RustText serverName;
+
+	public RustText serverMeta;
+
+	public Text serverText;
+
+	public Button viewWebpage;
+
+	public Button refresh;
+
+	public ServerInfo? currentServer;
+
+	public HttpImage headerImage;
+
+	public HttpImage logoImage;
+}
+
+
+using Facepunch.Flexbox;
+using Rust.UI;
+using UnityEngine;
+
+public class ServerBrowserInfoNexus : SingletonComponent<ServerBrowserInfoNexus>
+{
+	public GameObject loadingIndicator;
+
+	public GameObject errorIndicator;
+
+	public GameObject errorGenericText;
+
+	public GameObject errorSteamAuthNullText;
+
+	public RustText serverName;
+
+	public RustText serverDesc;
+
+	public RustText playerCount;
+
+	public RustText zoneCount;
+
+	public RustText lastWiped;
+
+	public HttpImage coverImage;
+
+	public HttpImage logoImage;
+
+	public UINexusMapWidget mapWidget;
+
+	public FlexTransition zoneListReveal;
+
+	public RectTransform zoneListParent;
+
+	public GameObjectRef zoneListItem;
+
+	public RustButton joinServer;
+
+	public RustButton viewWebpage;
+}
+
+
+using Rust.UI;
+using UnityEngine;
+
+public class ServerBrowserInfoNexusZone : MonoBehaviour
+{
+	public RustButton button;
+
+	public GameObject checkbox;
+
+	public GameObject checkboxIndicator;
+
+	public RectTransform currentServerIndicator;
+
+	public RustText zoneName;
+
+	public RustText ping;
+
+	public RustText playerCount;
+}
+
+
+using System;
+using Rust.UI;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+public class ServerBrowserItem : MonoBehaviour
+{
+	[Serializable]
+	public struct PremiumGameObject
+	{
+		public GameObject GameObject;
+
+		public bool ShowIfEligible;
+	}
+
+	public TextMeshProUGUI serverName;
+
+	public RustFlexText mapName;
+
+	public TextMeshProUGUI playerCount;
+
+	public TextMeshProUGUI ping;
+
+	public TextMeshProUGUI pendingPing;
+
+	public Toggle favourited;
+
+	public ServerBrowserTagList serverTagList;
+
+	public Color pingColor;
+
+	public Color pingWarningColor;
+
+	public Tooltip pingWarningTooltip;
+
+	public PremiumGameObject[] PremiumOptions;
+}
+
+
+using System;
+using UnityEngine;
+
+[Serializable]
+public struct PremiumGameObject
+{
+	public GameObject GameObject;
+
+	public bool ShowIfEligible;
+}
+
+
+using Rust.UI;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+public class ServerBrowserItemNexus : MonoBehaviour
+{
+	public TextMeshProUGUI serverName;
+
+	public RustFlexText mapName;
+
+	public TextMeshProUGUI playerCount;
+
+	public Toggle favourited;
+
+	public ServerBrowserTagList serverTagList;
+
+	public TextMeshProUGUI changeset;
+}
+
+
+using System;
+using Facepunch;
+using UnityEngine;
+
+public class ServerBrowserList : ServerBrowserListBase, VirtualScroll.IDataSource, VirtualScroll.IVisualUpdate
+{
+	[Serializable]
+	public struct Rules
+	{
+		public string tag;
+
+		public ServerBrowserList serverList;
+
+		public bool keepInList;
+
+		public string CompressedTag { get; set; }
+	}
+
+	public enum QueryType
+	{
+		RegularInternet,
+		Friends,
+		History,
+		LAN,
+		Favourites,
+		None
+	}
+
+	[Serializable]
+	public struct ServerKeyvalues
+	{
+		public string key;
+
+		public string value;
+	}
+
+	public bool legacyUIDisplay = true;
+
+	public bool UseOfficialServers;
+
+	public VirtualScroll VirtualScroll;
+
+	public FlexVirtualScroll VirtualScrollFlex;
+
+	public bool prioritizePremiumServers;
+
+	public Rules[] rules;
+
+	public bool hideOfficialServers;
+
+	public bool excludeEmptyServersUsingQuery;
+
+	public bool alwaysIncludeEmptyServers;
+
+	public bool clampPlayerCountsToTrustedValues = true;
+
+	public bool replacePingWithTimeSinceLastPlayed;
+
+	private static string[] pingStrings = new string[3] { ".", "..", "..." };
+
+	public QueryType queryType;
+
+	public static string VersionTag = "v" + 2594;
+
+	public ServerKeyvalues[] keyValues = new ServerKeyvalues[0];
+
+	public void OnVisualUpdate(int i, GameObject obj)
+	{
+	}
+
+	public int GetItemCount()
+	{
+		return 0;
+	}
+
+	public void SetItemData(int i, GameObject obj)
+	{
+	}
+
+	private void VisualUpdate(int i, GameObject obj)
+	{
+	}
+
+	private void VisualUpdateLegacy(int i, GameObject obj)
+	{
+	}
+}
+
+
+using System;
+
+[Serializable]
+public struct Rules
+{
+	public string tag;
+
+	public ServerBrowserList serverList;
+
+	public bool keepInList;
+
+	public string CompressedTag { get; set; }
+}
+
+
+public enum QueryType
+{
+	RegularInternet,
+	Friends,
+	History,
+	LAN,
+	Favourites,
+	None
+}
+
+
+using System;
+
+[Serializable]
+public struct ServerKeyvalues
+{
+	public string key;
+
+	public string value;
+}
+
+
+public abstract class ServerBrowserListBase : BaseMonoBehaviour
+{
+	public ServerBrowserCategory categoryButton;
+
+	public string sortOrder = "pingDesc";
+}
+
+
+using Facepunch;
+
+public class ServerBrowserListNexus : ServerBrowserListBase
+{
+	public VirtualScroll VirtualScroll;
+}
+
+
+using System.Collections.Generic;
+using Facepunch;
+using Facepunch.Nexus.Models;
+
+public class NexusEx : Nexus
+{
+	public static HashSet<StringView> Empty = new HashSet<StringView>();
+
+	public string Key { get; }
+
+	public HashSet<StringView> TagsSet { get; }
+
+	public NexusEx(string endpoint, Nexus nexus)
+	{
+		//IL_00b3: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00b8: Unknown result type (might be due to invalid IL or missing references)
+		((Nexus)this).NexusId = nexus.NexusId;
+		((Nexus)this).Name = nexus.Name;
+		((Nexus)this).LastReset = nexus.LastReset;
+		((Nexus)this).ZoneCount = nexus.ZoneCount;
+		((Nexus)this).MaxPlayers = nexus.MaxPlayers;
+		((Nexus)this).OnlinePlayers = nexus.OnlinePlayers;
+		((Nexus)this).QueuedPlayers = nexus.QueuedPlayers;
+		((Nexus)this).Build = nexus.Build;
+		((Nexus)this).Protocol = nexus.Protocol;
+		((Nexus)this).Tags = nexus.Tags;
+		Key = $"{endpoint}#{nexus.NexusId}";
+		if (!string.IsNullOrEmpty(((Nexus)this).Tags))
+		{
+			List<StringView> list = Pool.Get<List<StringView>>();
+			StringView val = StringView.op_Implicit(((Nexus)this).Tags);
+			((StringView)(ref val)).Split(',', (ICollection<StringView>)list);
+			TagsSet = new HashSet<StringView>(list, (IEqualityComparer<StringView>?)ComparerIgnoreCase.Instance);
+		}
+		else
+		{
+			TagsSet = Empty;
+		}
+	}
+}
+
+
+using System.Collections.Generic;
+using Facepunch;
+using Rust.UI;
+using UnityEngine;
+
+public class ServerBrowserTag : MonoBehaviour
+{
+	public string serverTag;
+
+	[Tooltip("Priority will choose what tag will show if multiple in group are defined. Seperate from display order")]
+	public int priority;
+
+	public bool excludeOnly;
+
+	private string _tag;
+
+	public RustButton button;
+
+	public string CompactTag
+	{
+		get
+		{
+			if (_tag == null)
+			{
+				_tag = ServerTagCompressor.ShortenTag(serverTag);
+			}
+			return _tag;
+		}
+	}
+
+	public bool IsActive
+	{
+		get
+		{
+			if ((Object)(object)button != (Object)null)
+			{
+				return ((RustControl)button).IsPressed;
+			}
+			return false;
+		}
+	}
+
+	public bool ContainsTag(HashSet<StringView> tags)
+	{
+		//IL_0007: Unknown result type (might be due to invalid IL or missing references)
+		//IL_001a: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0046: Unknown result type (might be due to invalid IL or missing references)
+		//IL_004b: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0054: Unknown result type (might be due to invalid IL or missing references)
+		if (tags.Contains(StringView.op_Implicit(CompactTag)) || tags.Contains(StringView.op_Implicit(serverTag)))
+		{
+			return true;
+		}
+		if (CompactTag != serverTag)
+		{
+			foreach (StringView tag in tags)
+			{
+				StringView current = tag;
+				if (((StringView)(ref current)).Contains(StringView.op_Implicit(CompactTag)))
+				{
+					return true;
+				}
+			}
+		}
+		return excludeOnly;
+	}
+}
+
+
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -50,7 +1592,7 @@ public class ServerBrowserTagFilters : MonoBehaviour
 				ServerBrowserTag[] tags = serverBrowserTagGroup.tags;
 				for (int j = 0; j < tags.Length; j++)
 				{
-					tags[j].button.SetToggleFalse();
+					tags[j].button.SetToggleFalse(true);
 				}
 			}
 		}
@@ -168,7 +1710,7 @@ public class ServerBrowserTagGroup : MonoBehaviour
 		ServerBrowserTag[] array = tags;
 		foreach (ServerBrowserTag serverBrowserTag in array)
 		{
-			if ((!isExclusive || !flag) && tagsEnabled <= maxTags && serverBrowserTag.ContainsTag(serverTags))
+			if ((!isExclusive || !flag) && tagsEnabled < maxTags && serverBrowserTag.ContainsTag(serverTags))
 			{
 				ComponentExtensions.SetActive<ServerBrowserTag>(serverBrowserTag, true);
 				tagsEnabled++;
@@ -326,15 +1868,101 @@ public class UnreadMessages : SingletonComponent<UnreadMessages>
 }
 
 
-public class WorkshopMainMenu : SingletonComponent<WorkshopMainMenu>
+using UnityEngine;
+using UnityEngine.UI;
+
+[ExecuteAlways]
+[RequireComponent(typeof(RawImage))]
+public class RawImagePreserveAspect : MonoBehaviour, IClientComponent
 {
-	public static Phrase loading_workshop = (Phrase)(object)new TokenisedPhrase("loading.workshop", "Loading Workshop");
+	public RawImage rawImage;
 
-	public static Phrase loading_workshop_setup = (Phrase)(object)new TokenisedPhrase("loading.workshop.initializing", "Setting Up Scene");
+	public RectTransform rectTransform;
 
-	public static Phrase loading_workshop_skinnables = (Phrase)(object)new TokenisedPhrase("loading.workshop.skinnables", "Getting Skinnables");
+	private Texture lastTexture;
+}
 
-	public static Phrase loading_workshop_item = (Phrase)(object)new TokenisedPhrase("loading.workshop.item", "Loading Item Data");
+
+using UnityEngine;
+using UnityEngine.UI;
+
+public class UI_FullscreenSkinViewer : SingletonComponent<UI_FullscreenSkinViewer>
+{
+	public CanvasGroup background;
+
+	public Image glowImage;
+
+	private UI_SkinViewerControls _source;
+}
+
+
+using UnityEngine;
+
+public class UI_SkinViewerControls : MonoBehaviour
+{
+	[SerializeField]
+	private Canvas canvas;
+
+	[SerializeField]
+	private CoverImage coverImage;
+
+	[SerializeField]
+	private float maxYaw = 8f;
+
+	[SerializeField]
+	private float maxPitch = 4f;
+
+	[SerializeField]
+	private float lerpSpeed = 6f;
+
+	[SerializeField]
+	private float responseCurve = 1.5f;
+
+	[SerializeField]
+	[Header("Drag")]
+	private float inertiaDecay = 5f;
+
+	[SerializeField]
+	private float rotationSpeed = 300f;
+
+	[SerializeField]
+	[Header("Pan")]
+	private Vector2 panLimitX = new Vector2(-1f, 1f);
+
+	[SerializeField]
+	private Vector2 panLimitY = new Vector2(-1f, 1f);
+
+	[SerializeField]
+	private float panSpeed = 0.005f;
+
+	[SerializeField]
+	[Header("Zoom")]
+	private float zoomSpeed = 0.1f;
+
+	[SerializeField]
+	private Vector2 minMaxFov = new Vector2(20f, 8f);
+
+	[SerializeField]
+	[Header("Idle")]
+	private float idleSwaySpeed = 1f;
+
+	[SerializeField]
+	private float idleSwayAmount = 1.5f;
+
+	[SerializeField]
+	private float swayEaseSpeed = 1f;
+
+	[SerializeField]
+	private float swayDelay = 0.3f;
+}
+
+
+using UnityEngine;
+using UnityEngine.UI;
+
+[RequireComponent(typeof(AudioSource), typeof(Toggle))]
+public class UI_StoreSongPreview : BaseMonoBehaviour
+{
 }
 
 
@@ -431,15 +2059,82 @@ public class OpenURL : MonoBehaviour
 }
 
 
+using System;
+using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.UI;
+
+[RequireComponent(typeof(RawImage))]
+public class ImageAlphaRaycastFilter : UIBehaviour, ICanvasRaycastFilter
+{
+	[NonSerialized]
+	private RawImage m_rawImage;
+
+	public float rChannelHitTestMinimumThreshold = 1f;
+
+	protected RawImage rawImage => m_rawImage ?? (m_rawImage = ((Component)this).GetComponent<RawImage>());
+
+	public virtual bool IsRaycastLocationValid(Vector2 screenPoint, Camera eventCamera)
+	{
+		//IL_0101: Expected O, but got Unknown
+		//IL_003a: Unknown result type (might be due to invalid IL or missing references)
+		//IL_004d: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0052: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0067: Unknown result type (might be due to invalid IL or missing references)
+		//IL_008f: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00a5: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00b3: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00db: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00e1: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00e7: Unknown result type (might be due to invalid IL or missing references)
+		if (rChannelHitTestMinimumThreshold <= 0f)
+		{
+			return true;
+		}
+		if (rChannelHitTestMinimumThreshold > 1f)
+		{
+			return false;
+		}
+		Texture mainTexture = ((Graphic)rawImage).mainTexture;
+		Texture2D val = (Texture2D)(object)((mainTexture is Texture2D) ? mainTexture : null);
+		Vector2 val2 = default(Vector2);
+		if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(((Graphic)rawImage).rectTransform, screenPoint, eventCamera, ref val2))
+		{
+			return false;
+		}
+		Rect pixelAdjustedRect = ((Graphic)rawImage).GetPixelAdjustedRect();
+		val2.x += ((Graphic)rawImage).rectTransform.pivot.x * ((Rect)(ref pixelAdjustedRect)).width;
+		val2.y += ((Graphic)rawImage).rectTransform.pivot.y * ((Rect)(ref pixelAdjustedRect)).height;
+		((Vector2)(ref val2))..ctor(val2.x / ((Rect)(ref pixelAdjustedRect)).width, val2.y / ((Rect)(ref pixelAdjustedRect)).height);
+		if ((Object)(object)val != (Object)null && !((Texture)val).isReadable)
+		{
+			return false;
+		}
+		try
+		{
+			return val.GetPixelBilinear(val2.x, val2.y).r <= rChannelHitTestMinimumThreshold;
+		}
+		catch (UnityException val3)
+		{
+			UnityException val4 = val3;
+			Debug.LogError((object)("Using alphaHitTestMinimumThreshold greater than 0 on Graphic whose sprite texture cannot be read. " + ((Exception)(object)val4).Message + " Also make sure to disable sprite packing for this sprite."), (Object)(object)this);
+			return true;
+		}
+	}
+}
+
+
 using UnityEngine.EventSystems;
 
-public class PaintableImageGrid : UIBehaviour
+public class PaintableImageGrid : UIBehaviour, IServerFileReceiver
 {
-	public UIPaintableImage templateImage;
+	public GameObjectRef templateImage;
 
 	public int cols = 4;
 
 	public int rows = 4;
+
+	public bool readOnly;
 }
 
 
@@ -465,6 +2160,8 @@ public class UIPaintableImage : MonoBehaviour
 	public FilterMode filterMode = (FilterMode)1;
 
 	public bool mipmaps;
+
+	public bool readOnly;
 
 	public RectTransform rectTransform
 	{
@@ -625,11 +2322,17 @@ public class UIParticle : BaseMonoBehaviour
 using Rust.UI;
 using UnityEngine;
 
-public class UIParty : SingletonComponent<UIParty>
+public class UIParty : BaseMonoBehaviour
 {
 	public GameObjectRef PartyMemberPrefab;
 
 	public GameObjectRef InvitePrefab;
+
+	public int MaxPartyMembersToRender = 6;
+
+	public GameObject HiddenPartyMemberContainer;
+
+	public RustText HiddenPartyMemberCountText;
 
 	public RectTransform PartyMemberContainer;
 
@@ -648,6 +2351,8 @@ public class UIParty : SingletonComponent<UIParty>
 	public UIFriendsList FriendsList;
 
 	public bool RenderParty = true;
+
+	public bool ShouldShowInvites = true;
 
 	public void LeavePartyClicked()
 	{
@@ -1241,6 +2946,8 @@ public class CameraEx : MonoBehaviour
 	internal AmbientMode old_ambientMode;
 
 	public float aspect;
+
+	private Camera camera;
 }
 
 
@@ -1700,15 +3407,15 @@ using UnityEngine.UI;
 
 public class StatusPanel : MonoBehaviour
 {
-	[Header("On Status")]
 	[SerializeField]
+	[Header("On Status")]
 	private RustText onStatusText;
 
 	[SerializeField]
 	private Image onStatusImage;
 
-	[Header("Off Status")]
 	[SerializeField]
+	[Header("Off Status")]
 	private RustText offStatusText;
 
 	[SerializeField]
@@ -1803,6 +3510,11 @@ public class SteamUserButton : MonoBehaviour
 	public ulong SteamId { get; private set; }
 
 	public string Username { get; private set; }
+
+	public void CopySteamId()
+	{
+		GUIUtility.systemCopyBuffer = SteamId.ToString();
+	}
 }
 
 
@@ -2055,16 +3767,16 @@ public class ToggleCookie : MonoBehaviour
 {
 	public void OnEnable()
 	{
-		//IL_0047: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0051: Expected O, but got Unknown
-		//IL_005e: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0068: Expected O, but got Unknown
+		//IL_0048: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0052: Expected O, but got Unknown
+		//IL_005f: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0069: Expected O, but got Unknown
 		RustButton val = default(RustButton);
 		if (((Component)this).TryGetComponent<RustButton>(ref val))
 		{
 			bool result;
 			bool flag = (bool.TryParse(PlayerPrefs.GetString("ToggleCookie_" + ((Object)this).name), out result) ? result : val.Value);
-			val.Toggle(flag, true);
+			val.Toggle(flag, true, true);
 			val.OnPressed.AddListener(new UnityAction(OnPressed));
 			val.OnReleased.AddListener(new UnityAction(OnReleased));
 		}
@@ -2280,18 +3992,56 @@ using UnityEngine;
 
 public class Tooltip : BaseMonoBehaviour, IClientComponent
 {
+	public enum DelayType
+	{
+		Short,
+		Long
+	}
+
 	public static TooltipContainer Current;
+
+	public GameObject TooltipObject;
 
 	[TextArea]
 	public string Text;
 
-	public GameObject TooltipObject;
-
 	public string token = "";
+
+	[Tooltip("Delay timing before the tooltip appears. Short is 0.15 seconds, Long is 0.5 seconds.")]
+	[Header("Additional Settings - Delay")]
+	[Space(10f)]
+	public DelayType delayBeforeAppearing;
+
+	[Tooltip("What position relative to the object that the tooltip should be spawned on.")]
+	[Header("Advanced Settings - Position")]
+	[Space(10f)]
+	public TooltipContainer.PositionMode positionMode;
+
+	[Tooltip("Spawn the tooltip relative to the mouse position rather than the objects.")]
+	public bool useMousePosition;
+
+	[Tooltip("Anchor tooltip at the centre of the object rather than a specific side.")]
+	public bool useCentre;
+
+	[Tooltip("Use percentage of source width/Height for horizontal offset in Left/Right or Up/Down mode.")]
+	public bool usePercentageOffset;
+
+	[Tooltip("Percentage of the source rect width to offset (0.0 - 1.0).")]
+	public float offsetPercent;
+
+	[Tooltip("How far to spawn from the objects position")]
+	public Vector2 offset = new Vector2(8f, 8f);
 
 	private object[] localizationArguments;
 
 	public string english => Text;
+}
+
+
+public enum DelayType
+{
+	Short,
+	Long
 }
 
 
@@ -2300,11 +4050,32 @@ using UnityEngine;
 
 public class TooltipContainer : MonoBehaviour
 {
+	public enum PositionMode
+	{
+		Auto,
+		Top,
+		Bottom,
+		Left,
+		Right,
+		TopLeft
+	}
+
 	public Transform ScaleRoot;
 
 	public RustText TooltipText;
 
 	public RectTransform OverrideLayoutRoot;
+}
+
+
+public enum PositionMode
+{
+	Auto,
+	Top,
+	Bottom,
+	Left,
+	Right,
+	TopLeft
 }
 
 
@@ -2655,6 +4426,27 @@ public class UIEscapeCapture : ListComponent<UIEscapeCapture>
 	[Tooltip("If true, pressing escape will call only this callback and not any others.")]
 	public bool blockOtherCallbacks = true;
 
+	[Tooltip("Set this to true if you want this EscapeCapture to take priority over any older EscapeCapture when enabled. Surely this should be default?")]
+	public bool insertAtTop = true;
+
+	[ClientVar(ClientAdmin = true)]
+	public static bool debug;
+
+	public override void Setup()
+	{
+		if (!ListComponent<UIEscapeCapture>.InstanceList.Contains(this))
+		{
+			if (insertAtTop && ListComponent<UIEscapeCapture>.InstanceList.Count > 0)
+			{
+				ListComponent<UIEscapeCapture>.InstanceList.Insert(0, this);
+			}
+			else
+			{
+				ListComponent<UIEscapeCapture>.InstanceList.Add(this);
+			}
+		}
+	}
+
 	public static bool EscapePressed()
 	{
 		//IL_0005: Unknown result type (might be due to invalid IL or missing references)
@@ -2665,6 +4457,10 @@ public class UIEscapeCapture : ListComponent<UIEscapeCapture>
 			while (enumerator.MoveNext())
 			{
 				UIEscapeCapture current = enumerator.Current;
+				if (debug)
+				{
+					Debug.Log((object)("Escape key pressed by: " + ((object)current).GetType().Name + " - " + ((Object)current).name));
+				}
 				current.onEscape.Invoke();
 				if (current.blockOtherCallbacks)
 				{
@@ -2877,8 +4673,24 @@ public class UIGenesDisplay : MonoBehaviour
 }
 
 
+using UnityEngine;
+
+public class UIGodOverlay : SingletonComponent<UIGodOverlay>
+{
+	public CanvasGroup invisCanvas;
+}
+
+
 public class UIIngame : SingletonComponent<UIIngame>
 {
+}
+
+
+using UnityEngine;
+
+public class UIInvisOverlay : SingletonComponent<UIInvisOverlay>
+{
+	public CanvasGroup invisCanvas;
 }
 
 
@@ -3439,6 +5251,19 @@ public class AlphaSinPulse : MonoBehaviour
 
 using UnityEngine;
 
+public static class EaseExtensions
+{
+	public static AnimationCurve FadeInFadeOutCurve = new AnimationCurve((Keyframe[])(object)new Keyframe[3]
+	{
+		new Keyframe(0f, 0f),
+		new Keyframe(0.5f, 1f),
+		new Keyframe(1f, 0f)
+	});
+}
+
+
+using UnityEngine;
+
 public class ShowIfConvarEnabled : MonoBehaviour
 {
 	public string Convar = "";
@@ -3621,6 +5446,13 @@ public class VitalRadial : MonoBehaviour
 }
 
 
+using UnityEngine;
+
+public class WorkshopWeather : MonoBehaviour
+{
+}
+
+
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -3705,8 +5537,10 @@ public class BaseCommandBuffer : MonoBehaviour
 }
 
 
+using Development.Attributes;
 using UnityEngine;
 
+[ResetStaticFields]
 public abstract class BaseMonoBehaviour : FacepunchBehaviour
 {
 	public virtual bool IsDebugging()
@@ -3927,6 +5761,8 @@ public class BasePrefab : BaseMonoBehaviour, IPrefabPreProcess
 	public bool isClient;
 
 	public bool isServer => !isClient;
+
+	bool IPrefabPreProcess.CanRunDuringBundling => false;
 
 	public virtual void PreProcess(IPrefabProcessor preProcess, GameObject rootObj, string name, bool serverside, bool clientside, bool bundling)
 	{
@@ -4560,7 +6396,7 @@ public class LoadBalancer : SingletonComponent<LoadBalancer>
 
 	protected void LateUpdate()
 	{
-		if (Application.isReceiving || Application.isLoading || Paused)
+		if (Application.isReceiving || Application.isLoading || Application.isUnloadingWorld || Paused)
 		{
 			return;
 		}
@@ -5148,7 +6984,7 @@ public class ObjectFlasher : BaseMonoBehaviour
 
 using UnityEngine;
 
-[ExecuteInEditMode]
+[ExecuteAlways]
 public class OneActiveSibling : MonoBehaviour
 {
 }
@@ -5183,6 +7019,8 @@ public class ParticleSystemContainer : MonoBehaviour, IPrefabPreProcess
 	[SerializeField]
 	[HideInInspector]
 	private LightEx[] lightExs;
+
+	bool IPrefabPreProcess.CanRunDuringBundling => false;
 
 	public void Play()
 	{
@@ -5542,9 +7380,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using Development.Attributes;
 using UnityEngine;
 using UnityEngine.Assertions;
 
+[ResetStaticFields]
 public abstract class PrefabAttribute : MonoBehaviour, IPrefabPreProcess
 {
 	public class AttributeCollection
@@ -5660,6 +7500,11 @@ public abstract class PrefabAttribute : MonoBehaviour, IPrefabPreProcess
 		{
 			prefabs.Remove(prefabID);
 		}
+
+		public void InvalidateAll()
+		{
+			prefabs.Clear();
+		}
 	}
 
 	[NonSerialized]
@@ -5705,39 +7550,41 @@ public abstract class PrefabAttribute : MonoBehaviour, IPrefabPreProcess
 
 	public bool isClient => !isServer;
 
+	bool IPrefabPreProcess.CanRunDuringBundling => true;
+
 	public virtual void PreProcess(IPrefabProcessor preProcess, GameObject rootObj, string name, bool serverside, bool clientside, bool bundling)
 	{
+		//IL_003c: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0041: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0046: Unknown result type (might be due to invalid IL or missing references)
+		//IL_004d: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0052: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0057: Unknown result type (might be due to invalid IL or missing references)
+		//IL_005e: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0063: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0068: Unknown result type (might be due to invalid IL or missing references)
+		//IL_006f: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0074: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0079: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0080: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0085: Unknown result type (might be due to invalid IL or missing references)
-		//IL_008a: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0091: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0096: Unknown result type (might be due to invalid IL or missing references)
-		//IL_009b: Unknown result type (might be due to invalid IL or missing references)
+		fullName = name;
+		hierachyName = ((Component)this).transform.GetRecursiveName();
+		prefabID = StringPool.Get(name);
+		instanceID = ((Object)this).GetInstanceID();
+		worldPosition = ((Component)this).transform.position;
+		worldRotation = ((Component)this).transform.rotation;
+		worldForward = ((Component)this).transform.forward;
+		localPosition = ((Component)this).transform.localPosition;
+		localScale = ((Component)this).transform.localScale;
+		localRotation = ((Component)this).transform.localRotation;
+		if (serverside)
+		{
+			prefabAttribute = server;
+			gameManager = GameManager.server;
+			isServer = true;
+		}
+		AttributeSetup(rootObj, name, serverside, clientside, bundling);
 		if (!bundling)
 		{
-			fullName = name;
-			hierachyName = ((Component)this).transform.GetRecursiveName();
-			prefabID = StringPool.Get(name);
-			instanceID = ((Object)this).GetInstanceID();
-			worldPosition = ((Component)this).transform.position;
-			worldRotation = ((Component)this).transform.rotation;
-			worldForward = ((Component)this).transform.forward;
-			localPosition = ((Component)this).transform.localPosition;
-			localScale = ((Component)this).transform.localScale;
-			localRotation = ((Component)this).transform.localRotation;
-			if (serverside)
-			{
-				prefabAttribute = server;
-				gameManager = GameManager.server;
-				isServer = true;
-			}
-			AttributeSetup(rootObj, name, serverside, clientside, bundling);
 			if (serverside)
 			{
 				server.Add(prefabID, this);
@@ -5938,6 +7785,11 @@ public class Library
 	{
 		prefabs.Remove(prefabID);
 	}
+
+	public void InvalidateAll()
+	{
+		prefabs.Clear();
+	}
 }
 
 
@@ -5946,13 +7798,13 @@ using UnityEngine;
 
 public class RigidbodyInfo : PrefabAttribute, IClientComponent
 {
-	[NonSerialized]
+	[ReadOnly]
 	public float mass;
 
-	[NonSerialized]
+	[ReadOnly]
 	public float drag;
 
-	[NonSerialized]
+	[ReadOnly]
 	public float angularDrag;
 
 	protected override Type GetIndexedType()
@@ -5963,15 +7815,18 @@ public class RigidbodyInfo : PrefabAttribute, IClientComponent
 	protected override void AttributeSetup(GameObject rootObj, string name, bool serverside, bool clientside, bool bundling)
 	{
 		base.AttributeSetup(rootObj, name, serverside, clientside, bundling);
-		Rigidbody component = rootObj.GetComponent<Rigidbody>();
-		if ((Object)(object)component == (Object)null)
+		if (!FileSystem.IsBundled)
 		{
-			Debug.LogError((object)(((object)this).GetType().Name + ": RigidbodyInfo couldn't find a rigidbody on " + name + "! If a RealmedRemove is removing it, make sure this script is above the RealmedRemove script so that this gets processed first."));
-			return;
+			Rigidbody component = rootObj.GetComponent<Rigidbody>();
+			if ((Object)(object)component == (Object)null)
+			{
+				Debug.LogError((object)(((object)this).GetType().Name + ": RigidbodyInfo couldn't find a rigidbody on " + name + "! If a RealmedRemove is removing it, make sure this script is above the RealmedRemove script so that this gets processed first."));
+				return;
+			}
+			mass = component.mass;
+			drag = component.drag;
+			angularDrag = component.angularDrag;
 		}
-		mass = component.mass;
-		drag = component.drag;
-		angularDrag = component.angularDrag;
 	}
 }
 
@@ -6302,6 +8157,7 @@ public class VisualiseTrigger : MonoBehaviour, IEditorComponent
 
 
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 public static class ArrayEx
@@ -6375,6 +8231,35 @@ public static class ArrayEx
 				array[num] = val;
 			}
 		}
+	}
+
+	public static int BinarySearch<TElement, TNeedle>(this TElement[] array, Func<TElement, TNeedle> selector, TNeedle needle, IComparer<TNeedle> comparer = null)
+	{
+		if (comparer == null)
+		{
+			comparer = Comparer<TNeedle>.Default;
+		}
+		int num = 0;
+		int num2 = array.Length - 1;
+		while (num <= num2)
+		{
+			int num3 = num + (num2 - num) / 2;
+			TNeedle x = selector(array[num3]);
+			int num4 = comparer.Compare(x, needle);
+			if (num4 == 0)
+			{
+				return num3;
+			}
+			if (num4 < 0)
+			{
+				num = num3 + 1;
+			}
+			else
+			{
+				num2 = num3 - 1;
+			}
+		}
+		return ~num;
 	}
 }
 
@@ -7135,6 +9020,125 @@ using UnityEngine;
 
 public class FPSLogger : MonoBehaviour
 {
+}
+
+
+using System;
+using Facepunch;
+using UnityEngine;
+
+public static class FuzzySearch
+{
+	[ClientVar(Help = "How similar the server name must be to the search filter to be included in the results. (0 is exact match, 1 is no match at all)")]
+	public static float search_similarity_modifier = 0.14f;
+
+	private static ArrayPool<int> _levenshteinDistancePool;
+
+	private static int DamerauLevenshteinDistance(string source, string target)
+	{
+		if (_levenshteinDistancePool == null)
+		{
+			_levenshteinDistancePool = new ArrayPool<int>(256);
+		}
+		if (string.IsNullOrEmpty(source))
+		{
+			if (!string.IsNullOrEmpty(target))
+			{
+				return target.Length;
+			}
+			return 0;
+		}
+		if (string.IsNullOrEmpty(target))
+		{
+			return source.Length;
+		}
+		if (source.Length > target.Length)
+		{
+			string text = target;
+			string text2 = source;
+			source = text;
+			target = text2;
+		}
+		int length = source.Length;
+		int length2 = target.Length;
+		int[] array = _levenshteinDistancePool.Rent(length2 + 1);
+		int[] array2 = _levenshteinDistancePool.Rent(length2 + 1);
+		int[] array3 = _levenshteinDistancePool.Rent(length2 + 1);
+		try
+		{
+			for (int i = 0; i <= length2; i++)
+			{
+				array[i] = i;
+			}
+			for (int j = 1; j <= length; j++)
+			{
+				array2[0] = j;
+				for (int k = 1; k <= length2; k++)
+				{
+					int num = ((source[j - 1] != target[k - 1]) ? 1 : 0);
+					int val = array[k] + 1;
+					int val2 = array2[k - 1] + 1;
+					int num2 = Math.Min(val2: array[k - 1] + num, val1: Math.Min(val, val2));
+					if (j > 1 && k > 1 && source[j - 1] == target[k - 2] && source[j - 2] == target[k - 1])
+					{
+						num2 = Math.Min(num2, array3[k - 2] + num);
+					}
+					array2[k] = num2;
+				}
+				int[] array4 = array;
+				int[] array5 = array2;
+				int[] array6 = array3;
+				array3 = array4;
+				array = array5;
+				array2 = array6;
+			}
+			return array[length2];
+		}
+		finally
+		{
+			_levenshteinDistancePool.Return(array);
+			_levenshteinDistancePool.Return(array2);
+			_levenshteinDistancePool.Return(array3);
+		}
+	}
+
+	public static bool IsSimilarWithThreshold(string source, string target, float threshold)
+	{
+		bool flag = string.IsNullOrEmpty(source);
+		bool flag2 = string.IsNullOrEmpty(target);
+		if (flag && flag2)
+		{
+			return true;
+		}
+		if (flag || flag2)
+		{
+			return false;
+		}
+		string text = source.ToLower().Trim();
+		string text2 = target.ToLower().Trim();
+		int num = DamerauLevenshteinDistance(text, text2);
+		if (num <= 3)
+		{
+			return true;
+		}
+		int num2 = Mathf.Max(text.Length, text2.Length);
+		return 1f - (float)num / (float)num2 >= threshold;
+	}
+
+	public static bool IsSimilar(string source, string target)
+	{
+		return IsSimilarWithThreshold(source, target, search_similarity_modifier);
+	}
+
+	public static bool IsSimilarFuzzy(this string source, string target)
+	{
+		return IsSimilar(source, target);
+	}
+
+	public static bool IsSimilarFuzzy(this string source, string target, float threshold)
+	{
+		return IsSimilarWithThreshold(source, target, threshold);
+	}
 }
 
 
@@ -9036,6 +11040,9 @@ public static class GizmosUtil
 }
 
 
+using Development.Attributes;
+
+[ResetStaticFields]
 public class GlobalMessages
 {
 }
@@ -11007,6 +13014,64 @@ public struct TimedEvent
 	public float variance;
 
 	public Action<uint> action;
+}
+
+
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Threading.Tasks;
+using Facepunch;
+using UnityEngine;
+
+public static class ThreadUtil
+{
+	public enum ErrorLogging
+	{
+		None,
+		LogExceptionAndBreak
+	}
+
+	public static async Task IterateBudgetUnbuffered<T>(IReadOnlyList<T> collection, TimeSpan budget, ErrorLogging errorLogging, Action<T> callback)
+	{
+		Stopwatch timer = Stopwatch.StartNew();
+		for (int i = 0; i < collection.Count; i++)
+		{
+			try
+			{
+				callback(collection[i]);
+			}
+			catch (Exception ex)
+			{
+				if (errorLogging == ErrorLogging.LogExceptionAndBreak)
+				{
+					Debug.LogException(ex);
+					break;
+				}
+			}
+			if (timer.Elapsed > budget)
+			{
+				await Task.Delay(1);
+				timer.Restart();
+			}
+		}
+	}
+
+	public static async Task IterateBudget<T>(IReadOnlyList<T> collection, TimeSpan budget, ErrorLogging errorLogging, Action<T> callback)
+	{
+		List<T> list = Pool.Get<List<T>>();
+		list.AddRange(collection);
+		await IterateBudgetUnbuffered(list, budget, errorLogging, callback);
+		Pool.FreeUnmanaged<T>(ref list);
+		await Task.CompletedTask;
+	}
+}
+
+
+public enum ErrorLogging
+{
+	None,
+	LogExceptionAndBreak
 }
 
 
@@ -13491,15 +15556,14 @@ public class PrefabPool
 	public GameObject Pop(Vector3 pos = default(Vector3), Quaternion rot = default(Quaternion))
 	{
 		//IL_002c: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0038: Unknown result type (might be due to invalid IL or missing references)
+		//IL_002d: Unknown result type (might be due to invalid IL or missing references)
 		while (stack.Count > 0)
 		{
 			Poolable poolable = stack.Pop();
 			Popped++;
 			if (Object.op_Implicit((Object)(object)poolable))
 			{
-				((Component)poolable).transform.position = pos;
-				((Component)poolable).transform.rotation = rot;
+				((Component)poolable).transform.SetPositionAndRotation(pos, rot);
 				poolable.LeavePool();
 				return ((Component)poolable).gameObject;
 			}
@@ -13587,6 +15651,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
+using System.Threading;
 using ConVar;
 using Rust;
 using UnityEngine;
@@ -13621,7 +15686,7 @@ public class PrefabPoolWarmup
 		Application.isLoadingPrefabs = false;
 	}
 
-	public static IEnumerator Run(float deltaTime, Action<string> statusFunction = null, string format = null)
+	public static IEnumerator Run(float deltaTime, Action<string> statusFunction = null, string format = null, CancellationToken ct = default(CancellationToken))
 	{
 		if (Application.isEditor || Application.isLoadingPrefabs || !Pool.prewarm)
 		{
@@ -13633,6 +15698,11 @@ public class PrefabPoolWarmup
 		Stopwatch sw = Stopwatch.StartNew();
 		for (int i = 0; i < prewarmAssets.Length; i++)
 		{
+			if (ct.IsCancellationRequested)
+			{
+				Application.isLoadingPrefabs = false;
+				yield break;
+			}
 			if (sw.Elapsed.TotalSeconds > (double)deltaTime || i == 0 || i == prewarmAssets.Length - 1)
 			{
 				statusFunction?.Invoke(string.Format((format != null) ? format : "{0}/{1}", i + 1, prewarmAssets.Length));
@@ -13649,7 +15719,7 @@ public class PrefabPoolWarmup
 	public static string[] GetAssetList()
 	{
 		return (from x in GameManifest.Current.prefabProperties
-			where x.pool
+			where x.pool && FileSystem.HasAsset(x.name)
 			select x.name).ToArray();
 	}
 
@@ -14268,6 +16338,8 @@ public class BaseViewModel : FacepunchBehaviour, IPrefabPreProcess, IViewmodelWo
 	[Header("Shield Overrides")]
 	public AnimationCurve leftArmShieldHideCurve = AnimationCurve.Linear(0f, 0f, 1f, 1f);
 
+	bool IPrefabPreProcess.CanRunDuringBundling => false;
+
 	public void PreProcess(IPrefabProcessor preProcess, GameObject rootObj, string name, bool serverside, bool clientside, bool bundling)
 	{
 	}
@@ -14303,6 +16375,15 @@ public class BlunderbussViewmodel : MonoBehaviour, IViewmodelComponent
 	public float ShotsLeftSpeed = 1f;
 
 	public int HammerLayer = 1;
+}
+
+
+using UnityEngine;
+
+public class CompassViewmodel : MonoBehaviour, IViewmodelComponent, IAnimationEventReceiver
+{
+	[SerializeField]
+	private Transform needleBone;
 }
 
 
@@ -15877,14 +17958,14 @@ public class AmplifyOcclusionBase : MonoBehaviour
 
 	public PerPixelNormalSource PerPixelNormals = PerPixelNormalSource.Camera;
 
-	[Tooltip("Final applied intensity of the occlusion effect.")]
 	[Range(0f, 1f)]
+	[Tooltip("Final applied intensity of the occlusion effect.")]
 	public float Intensity = 1f;
 
 	public Color Tint = Color.black;
 
-	[Tooltip("Radius spread of the occlusion.")]
 	[Range(0f, 32f)]
+	[Tooltip("Radius spread of the occlusion.")]
 	public float Radius = 2f;
 
 	[NonSerialized]
@@ -15897,8 +17978,8 @@ public class AmplifyOcclusionBase : MonoBehaviour
 	[Range(0f, 2f)]
 	public float RadiusIntensity = 1f;
 
-	[Range(0f, 16f)]
 	[Tooltip("Power exponent attenuation of the occlusion.")]
+	[Range(0f, 16f)]
 	public float PowerExponent = 1.8f;
 
 	[Range(0f, 0.99f)]
@@ -15932,8 +18013,8 @@ public class AmplifyOcclusionBase : MonoBehaviour
 	[Tooltip("Final Radius parameter.")]
 	public float FadeToRadius = 2f;
 
-	[Tooltip("Final PowerExponent parameter.")]
 	[Range(0f, 16f)]
+	[Tooltip("Final PowerExponent parameter.")]
 	public float FadeToPowerExponent = 1.8f;
 
 	[Tooltip("Final Thickness parameter.")]
@@ -15943,24 +18024,24 @@ public class AmplifyOcclusionBase : MonoBehaviour
 	[Header("Bilateral Blur")]
 	public bool BlurEnabled = true;
 
-	[Range(1f, 4f)]
 	[Tooltip("Radius in screen pixels.")]
+	[Range(1f, 4f)]
 	public int BlurRadius = 3;
 
-	[Range(1f, 4f)]
 	[Tooltip("Number of times that the Blur will repeat.")]
+	[Range(1f, 4f)]
 	public int BlurPasses = 1;
 
-	[Range(0f, 20f)]
 	[Tooltip("0 - Blured, 1 - Sharpened.")]
+	[Range(0f, 20f)]
 	public float BlurSharpness = 10f;
 
-	[Tooltip("Accumulates the effect over the time.")]
 	[Header("Temporal Filter")]
+	[Tooltip("Accumulates the effect over the time.")]
 	public bool FilterEnabled = true;
 
-	[Range(0f, 1f)]
 	[Tooltip("Controls the accumulation decayment. 0 - Faster update, more flicker. 1 - Slow update (ghosting on moving objects), less flicker.")]
+	[Range(0f, 1f)]
 	public float FilterBlending = 0.5f;
 
 	[Tooltip("Controls the discard sensibility based on the motion of the scene and objects. 0 - Discard less, reuse more (more ghost effect). 1 - Discard more, reuse less (less ghost effect).")]
@@ -16013,9 +18094,9 @@ public enum SampleCountLevel
 
 using UnityEngine;
 
-[AddComponentMenu("Image Effects/Amplify Occlusion")]
-[RequireComponent(typeof(Camera))]
 [ExecuteInEditMode]
+[RequireComponent(typeof(Camera))]
+[AddComponentMenu("Image Effects/Amplify Occlusion")]
 public class AmplifyOcclusionEffect : AmplifyOcclusionBase
 {
 }
@@ -18132,22 +20213,22 @@ public class FXAAPostEffectsBase : MonoBehaviour
 using System;
 using UnityEngine;
 
-[ExecuteInEditMode]
-[RequireComponent(typeof(Camera))]
-[AddComponentMenu("KriptoFX/Explosion_Bloom")]
 [ImageEffectAllowedInSceneView]
+[AddComponentMenu("KriptoFX/Explosion_Bloom")]
+[RequireComponent(typeof(Camera))]
+[ExecuteInEditMode]
 public class Explosion_Bloom : MonoBehaviour
 {
 	[Serializable]
 	public struct Settings
 	{
-		[Tooltip("Filters out pixels under this level of brightness.")]
 		[SerializeField]
+		[Tooltip("Filters out pixels under this level of brightness.")]
 		public float threshold;
 
 		[Range(0f, 1f)]
-		[SerializeField]
 		[Tooltip("Makes transition between under/over-threshold gradual.")]
+		[SerializeField]
 		public float softKnee;
 
 		[SerializeField]
@@ -18159,8 +20240,8 @@ public class Explosion_Bloom : MonoBehaviour
 		[Tooltip("Blend factor of the result image.")]
 		public float intensity;
 
-		[SerializeField]
 		[Tooltip("Controls filter quality and buffer resolution.")]
+		[SerializeField]
 		public bool highQuality;
 
 		[SerializeField]
@@ -18412,13 +20493,13 @@ using UnityEngine;
 [Serializable]
 public struct Settings
 {
-	[Tooltip("Filters out pixels under this level of brightness.")]
 	[SerializeField]
+	[Tooltip("Filters out pixels under this level of brightness.")]
 	public float threshold;
 
 	[Range(0f, 1f)]
-	[SerializeField]
 	[Tooltip("Makes transition between under/over-threshold gradual.")]
+	[SerializeField]
 	public float softKnee;
 
 	[SerializeField]
@@ -18430,8 +20511,8 @@ public struct Settings
 	[Tooltip("Blend factor of the result image.")]
 	public float intensity;
 
-	[SerializeField]
 	[Tooltip("Controls filter quality and buffer resolution.")]
+	[SerializeField]
 	public bool highQuality;
 
 	[SerializeField]
@@ -19292,8 +21373,8 @@ public class NGSS_Directional : MonoBehaviour
 	[Tooltip("PCSS softness when shadows is close to caster.\nRecommended value: 0.05.")]
 	public float PCSS_FILTER_DIR_MIN = 0.05f;
 
-	[Tooltip("PCSS softness when shadows is far from caster.\nRecommended value: 0.25.\nIf too high can lead to visible artifacts when early bailout is enabled.")]
 	[Range(0f, 0.5f)]
+	[Tooltip("PCSS softness when shadows is far from caster.\nRecommended value: 0.25.\nIf too high can lead to visible artifacts when early bailout is enabled.")]
 	public float PCSS_FILTER_DIR_MAX = 0.25f;
 
 	[Tooltip("Amount of banding or noise. Example: 0.0 gives 100 % Banding and 10.0 gives 100 % Noise.")]
@@ -19938,23 +22019,23 @@ public class OcclusionCulling : MonoBehaviour
 		public int hashedPoolIndex = -1;
 	}
 
-	public class HashedPool<ValueType> where ValueType : HashedPoolValue, new()
+	public class HashedPool<TValueType> where TValueType : HashedPoolValue, new()
 	{
 		private int granularity;
 
-		private Dictionary<ulong, ValueType> dict;
+		private Dictionary<ulong, TValueType> dict;
 
-		private List<ValueType> pool;
+		private List<TValueType> pool;
 
-		private List<ValueType> list;
+		private List<TValueType> list;
 
-		private Queue<ValueType> recycled;
+		private Queue<TValueType> recycled;
 
 		public int Size => list.Count;
 
 		public int Count => dict.Count;
 
-		public ValueType this[int i]
+		public TValueType this[int i]
 		{
 			get
 			{
@@ -19969,10 +22050,10 @@ public class OcclusionCulling : MonoBehaviour
 		public HashedPool(int capacity, int granularity)
 		{
 			this.granularity = granularity;
-			dict = new Dictionary<ulong, ValueType>(capacity);
-			pool = new List<ValueType>(capacity);
-			list = new List<ValueType>(capacity);
-			recycled = new Queue<ValueType>();
+			dict = new Dictionary<ulong, TValueType>(capacity);
+			pool = new List<TValueType>(capacity);
+			list = new List<TValueType>(capacity);
+			recycled = new Queue<TValueType>();
 		}
 
 		public void Clear()
@@ -19983,9 +22064,9 @@ public class OcclusionCulling : MonoBehaviour
 			recycled.Clear();
 		}
 
-		public ValueType Add(ulong key, int capacityGranularity = 16)
+		public TValueType Add(ulong key, int capacityGranularity = 16)
 		{
-			ValueType val;
+			TValueType val;
 			if (recycled.Count > 0)
 			{
 				val = recycled.Dequeue();
@@ -19998,7 +22079,7 @@ public class OcclusionCulling : MonoBehaviour
 				{
 					pool.Capacity += granularity;
 				}
-				val = new ValueType
+				val = new TValueType
 				{
 					hashedPoolIndex = count
 				};
@@ -20010,7 +22091,7 @@ public class OcclusionCulling : MonoBehaviour
 			return val;
 		}
 
-		public void Remove(ValueType value)
+		public void Remove(TValueType value)
 		{
 			dict.Remove(value.hashedPoolKey);
 			list[value.hashedPoolIndex] = null;
@@ -20018,7 +22099,7 @@ public class OcclusionCulling : MonoBehaviour
 			value.hashedPoolKey = ulong.MaxValue;
 		}
 
-		public bool TryGetValue(ulong key, out ValueType value)
+		public bool TryGetValue(ulong key, out TValueType value)
 		{
 			return dict.TryGetValue(key, out value);
 		}
@@ -22210,23 +24291,23 @@ public class HashedPoolValue
 
 using System.Collections.Generic;
 
-public class HashedPool<ValueType> where ValueType : HashedPoolValue, new()
+public class HashedPool<TValueType> where TValueType : HashedPoolValue, new()
 {
 	private int granularity;
 
-	private Dictionary<ulong, ValueType> dict;
+	private Dictionary<ulong, TValueType> dict;
 
-	private List<ValueType> pool;
+	private List<TValueType> pool;
 
-	private List<ValueType> list;
+	private List<TValueType> list;
 
-	private Queue<ValueType> recycled;
+	private Queue<TValueType> recycled;
 
 	public int Size => list.Count;
 
 	public int Count => dict.Count;
 
-	public ValueType this[int i]
+	public TValueType this[int i]
 	{
 		get
 		{
@@ -22241,10 +24322,10 @@ public class HashedPool<ValueType> where ValueType : HashedPoolValue, new()
 	public HashedPool(int capacity, int granularity)
 	{
 		this.granularity = granularity;
-		dict = new Dictionary<ulong, ValueType>(capacity);
-		pool = new List<ValueType>(capacity);
-		list = new List<ValueType>(capacity);
-		recycled = new Queue<ValueType>();
+		dict = new Dictionary<ulong, TValueType>(capacity);
+		pool = new List<TValueType>(capacity);
+		list = new List<TValueType>(capacity);
+		recycled = new Queue<TValueType>();
 	}
 
 	public void Clear()
@@ -22255,9 +24336,9 @@ public class HashedPool<ValueType> where ValueType : HashedPoolValue, new()
 		recycled.Clear();
 	}
 
-	public ValueType Add(ulong key, int capacityGranularity = 16)
+	public TValueType Add(ulong key, int capacityGranularity = 16)
 	{
-		ValueType val;
+		TValueType val;
 		if (recycled.Count > 0)
 		{
 			val = recycled.Dequeue();
@@ -22270,7 +24351,7 @@ public class HashedPool<ValueType> where ValueType : HashedPoolValue, new()
 			{
 				pool.Capacity += granularity;
 			}
-			val = new ValueType
+			val = new TValueType
 			{
 				hashedPoolIndex = count
 			};
@@ -22282,7 +24363,7 @@ public class HashedPool<ValueType> where ValueType : HashedPoolValue, new()
 		return val;
 	}
 
-	public void Remove(ValueType value)
+	public void Remove(TValueType value)
 	{
 		dict.Remove(value.hashedPoolKey);
 		list[value.hashedPoolIndex] = null;
@@ -22290,7 +24371,7 @@ public class HashedPool<ValueType> where ValueType : HashedPoolValue, new()
 		value.hashedPoolKey = ulong.MaxValue;
 	}
 
-	public bool TryGetValue(ulong key, out ValueType value)
+	public bool TryGetValue(ulong key, out TValueType value)
 	{
 		return dict.TryGetValue(key, out value);
 	}
@@ -22641,9 +24722,9 @@ public struct Sphere
 using UnityEngine;
 using UnityEngine.Rendering;
 
+[RequireComponent(typeof(Camera))]
 [ExecuteInEditMode]
 [AddComponentMenu("Image Effects/Sonic Ether/SE Screen-Space Shadows")]
-[RequireComponent(typeof(Camera))]
 public class SEScreenSpaceShadows : SingletonComponent<SEScreenSpaceShadows>, IClientComponent
 {
 	private CommandBuffer blendShadowsCommandBuffer;
@@ -23534,9 +25615,9 @@ public class VertexStreamChildrenRebuilder : MonoBehaviour
 using System;
 using UnityEngine;
 
+[AddComponentMenu("Rendering/Visualize Texture Density")]
 [ExecuteInEditMode]
 [ImageEffectAllowedInSceneView]
-[AddComponentMenu("Rendering/Visualize Texture Density")]
 public class VisualizeTexelDensity : MonoBehaviour
 {
 	public Shader shader;

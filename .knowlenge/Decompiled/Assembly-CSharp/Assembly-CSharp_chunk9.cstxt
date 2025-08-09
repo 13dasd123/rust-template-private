@@ -1,3 +1,1001 @@
+using System;
+using System.Runtime.CompilerServices;
+using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
+using Unity.Jobs;
+using Unity.Mathematics;
+using UnityEngine;
+using UnityEngine.Rendering;
+
+public class FishShoal : IDisposable
+{
+	[Serializable]
+	public struct FishType
+	{
+		public Mesh mesh;
+
+		public Material material;
+
+		public int castsPerFrame;
+
+		public int maxCount;
+
+		public float minSpeed;
+
+		public float maxSpeed;
+
+		public float idealDepth;
+
+		public float minTurnSpeed;
+
+		public float maxTurnSpeed;
+
+		public float minScale;
+
+		public float maxScale;
+	}
+
+	public struct FishData
+	{
+		public bool isAlive;
+
+		public float updateTime;
+
+		public float startleTime;
+
+		public float spawnX;
+
+		public float spawnZ;
+
+		public float destinationX;
+
+		public float destinationZ;
+
+		public float directionX;
+
+		public float directionZ;
+
+		public float speed;
+
+		public float scale;
+	}
+
+	public struct FishRenderData
+	{
+		public float3 position;
+
+		public float rotation;
+
+		public float scale;
+
+		public float distance;
+
+		public float seed;
+	}
+
+	public struct FishCollisionGatherJob : IJob
+	{
+		public int layerMask;
+
+		public uint seed;
+
+		public int castCount;
+
+		public int fishCount;
+
+		public NativeArray<RaycastCommand> castCommands;
+
+		public NativeArray<FishData> fishDataArray;
+
+		public NativeArray<FishRenderData> fishRenderDataArray;
+
+		public NativeArray<int> fishCastIndices;
+
+		public void Execute()
+		{
+			//IL_0078: Unknown result type (might be due to invalid IL or missing references)
+			//IL_0082: Unknown result type (might be due to invalid IL or missing references)
+			//IL_0087: Unknown result type (might be due to invalid IL or missing references)
+			//IL_00a6: Unknown result type (might be due to invalid IL or missing references)
+			//IL_00ab: Unknown result type (might be due to invalid IL or missing references)
+			//IL_00d6: Unknown result type (might be due to invalid IL or missing references)
+			//IL_0032: Unknown result type (might be due to invalid IL or missing references)
+			//IL_0038: Unknown result type (might be due to invalid IL or missing references)
+			Random val = default(Random);
+			((Random)(ref val))..ctor(seed);
+			int length = castCommands.Length;
+			for (int i = 0; i < length; i++)
+			{
+				RaycastCommand val3;
+				if (i >= castCount)
+				{
+					val3 = (castCommands[i] = default(RaycastCommand));
+					continue;
+				}
+				int num = ((Random)(ref val)).NextInt(0, fishCount);
+				FishData fishData = fishDataArray[num];
+				FishRenderData fishRenderData = fishRenderDataArray[num];
+				ref NativeArray<RaycastCommand> reference = ref castCommands;
+				int num2 = i;
+				val3 = default(RaycastCommand);
+				((RaycastCommand)(ref val3)).from = float3.op_Implicit(fishRenderData.position);
+				((RaycastCommand)(ref val3)).direction = float3.op_Implicit(new float3(fishData.directionX, 0f, fishData.directionZ));
+				((RaycastCommand)(ref val3)).distance = 4f;
+				((RaycastCommand)(ref val3)).layerMask = layerMask;
+				((RaycastCommand)(ref val3)).maxHits = 1;
+				reference[num2] = val3;
+				fishCastIndices[i] = num;
+			}
+		}
+	}
+
+	public struct FishCollisionProcessJob : IJob
+	{
+		public int castCount;
+
+		public NativeArray<FishData> fishDataArray;
+
+		[ReadOnly]
+		public NativeArray<RaycastHit> castResults;
+
+		[ReadOnly]
+		public NativeArray<int> fishCastIndices;
+
+		[ReadOnly]
+		public NativeArray<FishRenderData> fishRenderDataArray;
+
+		public void Execute()
+		{
+			//IL_000e: Unknown result type (might be due to invalid IL or missing references)
+			//IL_0013: Unknown result type (might be due to invalid IL or missing references)
+			//IL_0016: Unknown result type (might be due to invalid IL or missing references)
+			//IL_001d: Unknown result type (might be due to invalid IL or missing references)
+			//IL_0023: Unknown result type (might be due to invalid IL or missing references)
+			//IL_006f: Unknown result type (might be due to invalid IL or missing references)
+			//IL_0074: Unknown result type (might be due to invalid IL or missing references)
+			//IL_007d: Unknown result type (might be due to invalid IL or missing references)
+			//IL_0082: Unknown result type (might be due to invalid IL or missing references)
+			//IL_0085: Unknown result type (might be due to invalid IL or missing references)
+			//IL_0096: Unknown result type (might be due to invalid IL or missing references)
+			//IL_009b: Unknown result type (might be due to invalid IL or missing references)
+			//IL_009e: Unknown result type (might be due to invalid IL or missing references)
+			//IL_00a8: Unknown result type (might be due to invalid IL or missing references)
+			//IL_00ad: Unknown result type (might be due to invalid IL or missing references)
+			//IL_00af: Unknown result type (might be due to invalid IL or missing references)
+			//IL_00b4: Unknown result type (might be due to invalid IL or missing references)
+			//IL_00b9: Unknown result type (might be due to invalid IL or missing references)
+			//IL_00bb: Unknown result type (might be due to invalid IL or missing references)
+			//IL_00bd: Unknown result type (might be due to invalid IL or missing references)
+			//IL_00c4: Unknown result type (might be due to invalid IL or missing references)
+			//IL_00c9: Unknown result type (might be due to invalid IL or missing references)
+			//IL_00ce: Unknown result type (might be due to invalid IL or missing references)
+			//IL_00d2: Unknown result type (might be due to invalid IL or missing references)
+			//IL_00e0: Unknown result type (might be due to invalid IL or missing references)
+			for (int i = 0; i < castCount; i++)
+			{
+				RaycastHit val = castResults[i];
+				if (((RaycastHit)(ref val)).normal != default(Vector3))
+				{
+					int num = fishCastIndices[i];
+					FishData fishData = fishDataArray[num];
+					if (fishData.startleTime <= 0f)
+					{
+						FishRenderData fishRenderData = fishRenderDataArray[num];
+						float2 xz = ((float3)(ref fishRenderData.position)).xz;
+						val = castResults[i];
+						float x = ((RaycastHit)(ref val)).point.x;
+						val = castResults[i];
+						float2 val2 = math.normalize(new float2(x, ((RaycastHit)(ref val)).point.z) - xz);
+						float2 val3 = xz - val2 * 8f;
+						fishData.destinationX = val3.x;
+						fishData.destinationZ = val3.y;
+						fishData.startleTime = 2f;
+						fishData.updateTime = 6f;
+						fishDataArray[num] = fishData;
+					}
+				}
+			}
+		}
+	}
+
+	public struct FishUpdateJob : IJobParallelFor
+	{
+		[ReadOnly]
+		public float3 cameraPosition;
+
+		[ReadOnly]
+		public uint seed;
+
+		[ReadOnly]
+		public float dt;
+
+		[ReadOnly]
+		public float minSpeed;
+
+		[ReadOnly]
+		public float maxSpeed;
+
+		[ReadOnly]
+		public float minTurnSpeed;
+
+		[ReadOnly]
+		public float maxTurnSpeed;
+
+		[ReadOnly]
+		public float minDepth;
+
+		[NativeDisableUnsafePtrRestriction]
+		public unsafe FishData* fishDataArray;
+
+		[NativeDisableUnsafePtrRestriction]
+		public unsafe FishRenderData* fishRenderDataArray;
+
+		public unsafe void Execute(int i)
+		{
+			//IL_003d: Unknown result type (might be due to invalid IL or missing references)
+			//IL_0043: Unknown result type (might be due to invalid IL or missing references)
+			//IL_00f4: Unknown result type (might be due to invalid IL or missing references)
+			//IL_00fb: Unknown result type (might be due to invalid IL or missing references)
+			//IL_0100: Unknown result type (might be due to invalid IL or missing references)
+			//IL_010e: Unknown result type (might be due to invalid IL or missing references)
+			//IL_011b: Unknown result type (might be due to invalid IL or missing references)
+			//IL_00cf: Unknown result type (might be due to invalid IL or missing references)
+			//IL_00d2: Unknown result type (might be due to invalid IL or missing references)
+			//IL_0179: Unknown result type (might be due to invalid IL or missing references)
+			//IL_017c: Unknown result type (might be due to invalid IL or missing references)
+			//IL_0181: Unknown result type (might be due to invalid IL or missing references)
+			//IL_0186: Unknown result type (might be due to invalid IL or missing references)
+			//IL_018b: Unknown result type (might be due to invalid IL or missing references)
+			//IL_018d: Unknown result type (might be due to invalid IL or missing references)
+			//IL_0194: Unknown result type (might be due to invalid IL or missing references)
+			//IL_01e5: Unknown result type (might be due to invalid IL or missing references)
+			//IL_01ea: Unknown result type (might be due to invalid IL or missing references)
+			//IL_0206: Unknown result type (might be due to invalid IL or missing references)
+			//IL_0213: Unknown result type (might be due to invalid IL or missing references)
+			//IL_0226: Unknown result type (might be due to invalid IL or missing references)
+			//IL_022b: Unknown result type (might be due to invalid IL or missing references)
+			//IL_0233: Unknown result type (might be due to invalid IL or missing references)
+			//IL_023e: Unknown result type (might be due to invalid IL or missing references)
+			//IL_0243: Unknown result type (might be due to invalid IL or missing references)
+			//IL_0248: Unknown result type (might be due to invalid IL or missing references)
+			FishData* ptr = fishDataArray + i;
+			FishRenderData* ptr2 = fishRenderDataArray + i;
+			Random random = default(Random);
+			((Random)(ref random))..ctor((uint)(i * 3245 + seed));
+			float num = math.distancesq(cameraPosition, ptr2->position);
+			bool flag = ptr->startleTime > 0f;
+			if (num > math.pow(40f, 2f) || ((float3)(&ptr2->position)).y > minDepth)
+			{
+				ptr->isAlive = false;
+				return;
+			}
+			if (!flag && num < 100f)
+			{
+				ptr->startleTime = 2f;
+				flag = true;
+			}
+			float3 val = default(float3);
+			((float3)(ref val))..ctor(ptr->destinationX, ((float3)(&ptr2->position)).y, ptr->destinationZ);
+			if (ptr->updateTime >= 8f || math.distancesq(val, ptr2->position) < 1f)
+			{
+				float3 target = GetTarget(new float3(ptr->spawnX, 0f, ptr->spawnZ), ref random);
+				ptr->updateTime = 0f;
+				ptr->destinationX = target.x;
+				ptr->destinationZ = target.z;
+			}
+			ptr2->scale = math.lerp(ptr2->scale, ptr->scale, dt * 5f);
+			ptr->speed = math.lerp(ptr->speed, flag ? maxSpeed : minSpeed, dt * 4f);
+			float3 val2 = math.normalize(val - ptr2->position);
+			float a = math.atan2(val2.z, val2.x);
+			ptr2->rotation = 0f - ptr2->rotation + MathF.PI / 2f;
+			float num2 = (flag ? maxTurnSpeed : minTurnSpeed);
+			ptr2->rotation = LerpAngle(ptr2->rotation, a, dt * num2);
+			float3 zero = float3.zero;
+			math.sincos(ptr2->rotation, ref zero.z, ref zero.x);
+			ptr->directionX = zero.x;
+			ptr->directionZ = zero.z;
+			float3* position = &ptr2->position;
+			Unsafe.Write(position, *position + zero * ptr->speed * dt);
+			ptr2->rotation = 0f - ptr2->rotation + MathF.PI / 2f;
+			ptr2->distance += ptr->speed * dt;
+			ptr->updateTime += dt;
+			ptr->startleTime -= dt;
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		private static float LerpAngle(float a0, float a1, float t)
+		{
+			float num = a1 - a0;
+			num = math.clamp(num - math.floor(num / (MathF.PI * 2f)) * (MathF.PI * 2f), 0f, MathF.PI * 2f);
+			return math.lerp(a0, a0 + ((num > MathF.PI) ? (num - MathF.PI * 2f) : num), t);
+		}
+	}
+
+	public struct KillFish : IJob
+	{
+		public NativeArray<FishData> fishDataArray;
+
+		public NativeArray<FishRenderData> fishRenderDataArray;
+
+		public NativeArray<int> fishCount;
+
+		public void Execute()
+		{
+			int num = fishCount[0];
+			for (int num2 = num - 1; num2 >= 0; num2--)
+			{
+				if (!fishDataArray[num2].isAlive)
+				{
+					if (num2 < num - 1)
+					{
+						fishDataArray[num2] = fishDataArray[num - 1];
+						fishRenderDataArray[num2] = fishRenderDataArray[num - 1];
+					}
+					num--;
+				}
+			}
+			fishCount[0] = num;
+		}
+	}
+
+	private const float maxFishDistance = 40f;
+
+	private FishType fishType;
+
+	private JobHandle jobHandle;
+
+	private NativeArray<RaycastCommand> castCommands;
+
+	private NativeArray<RaycastHit> castResults;
+
+	private NativeArray<int> fishCastIndices;
+
+	private NativeArray<FishData> fishData;
+
+	private NativeArray<FishRenderData> fishRenderData;
+
+	private NativeArray<int> fishCount;
+
+	private MaterialPropertyBlock materialPropertyBlock;
+
+	private ComputeBuffer fishBuffer;
+
+	public FishShoal(FishType fishType)
+	{
+		//IL_0016: Unknown result type (might be due to invalid IL or missing references)
+		//IL_001b: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0029: Unknown result type (might be due to invalid IL or missing references)
+		//IL_002e: Unknown result type (might be due to invalid IL or missing references)
+		//IL_003c: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0041: Unknown result type (might be due to invalid IL or missing references)
+		//IL_004f: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0054: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0062: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0067: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0070: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0075: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0086: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0090: Expected O, but got Unknown
+		//IL_0091: Unknown result type (might be due to invalid IL or missing references)
+		//IL_009b: Expected O, but got Unknown
+		this.fishType = fishType;
+		castCommands = new NativeArray<RaycastCommand>(fishType.castsPerFrame, (Allocator)4, (NativeArrayOptions)1);
+		castResults = new NativeArray<RaycastHit>(fishType.castsPerFrame, (Allocator)4, (NativeArrayOptions)1);
+		fishCastIndices = new NativeArray<int>(fishType.castsPerFrame, (Allocator)4, (NativeArrayOptions)1);
+		fishData = new NativeArray<FishData>(fishType.maxCount, (Allocator)4, (NativeArrayOptions)1);
+		fishRenderData = new NativeArray<FishRenderData>(fishType.maxCount, (Allocator)4, (NativeArrayOptions)1);
+		fishCount = new NativeArray<int>(1, (Allocator)4, (NativeArrayOptions)1);
+		fishBuffer = new ComputeBuffer(fishType.maxCount, UnsafeUtility.SizeOf<FishRenderData>());
+		materialPropertyBlock = new MaterialPropertyBlock();
+		materialPropertyBlock.SetBuffer("_FishData", fishBuffer);
+	}
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	private static float3 GetTarget(float3 spawnPos, ref Random random)
+	{
+		//IL_0001: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0006: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0007: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0008: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0013: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0019: Unknown result type (might be due to invalid IL or missing references)
+		//IL_002e: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0033: Unknown result type (might be due to invalid IL or missing references)
+		float2 val = ((Random)(ref random)).NextFloat2Direction();
+		return spawnPos + new float3(val.x, 0f, val.y) * ((Random)(ref random)).NextFloat(10f, 15f);
+	}
+
+	private int GetPopulationScaleForPoint(float3 cameraPosition)
+	{
+		return 1;
+	}
+
+	public void TrySpawn(float3 cameraPosition)
+	{
+		//IL_0000: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0001: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0050: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00c0: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00c3: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00d4: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00d9: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00de: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00eb: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00fd: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0128: Unknown result type (might be due to invalid IL or missing references)
+		//IL_012a: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0141: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0143: Unknown result type (might be due to invalid IL or missing references)
+		//IL_014d: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0159: Unknown result type (might be due to invalid IL or missing references)
+		//IL_015b: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0171: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0175: Unknown result type (might be due to invalid IL or missing references)
+		//IL_017a: Unknown result type (might be due to invalid IL or missing references)
+		//IL_017c: Unknown result type (might be due to invalid IL or missing references)
+		//IL_017e: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0180: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0185: Unknown result type (might be due to invalid IL or missing references)
+		//IL_018a: Unknown result type (might be due to invalid IL or missing references)
+		//IL_01a5: Unknown result type (might be due to invalid IL or missing references)
+		//IL_01b3: Unknown result type (might be due to invalid IL or missing references)
+		//IL_01c1: Unknown result type (might be due to invalid IL or missing references)
+		//IL_01cf: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0217: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0219: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0220: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0227: Unknown result type (might be due to invalid IL or missing references)
+		(float, float) waterAndTerrainSurface = WaterLevel.GetWaterAndTerrainSurface(float3.op_Implicit(cameraPosition), waves: false, volumes: false);
+		float item = waterAndTerrainSurface.Item1;
+		float item2 = waterAndTerrainSurface.Item2;
+		item -= 3f;
+		if (math.abs(item - item2) < 4f || item < item2)
+		{
+			return;
+		}
+		int num = fishCount[0];
+		int num2 = Mathf.Min(Mathf.CeilToInt((float)(fishType.maxCount * GetPopulationScaleForPoint(cameraPosition))) - num, 5);
+		if (num2 <= 0)
+		{
+			return;
+		}
+		uint num3 = (uint)(Time.frameCount + fishType.mesh.vertexCount);
+		int num4 = fishCount[0];
+		int num5 = math.min(num4 + num2, fishType.maxCount);
+		Random random = default(Random);
+		for (int i = num4; i < num5; i++)
+		{
+			((Random)(ref random))..ctor((uint)(i * 3245 + num3));
+			float3 val = cameraPosition + ((Random)(ref random)).NextFloat3Direction() * ((Random)(ref random)).NextFloat(40f);
+			val.y = ((Random)(ref random)).NextFloat(math.max(item2 + 1f, cameraPosition.y - 30f), math.min(item, cameraPosition.y + 30f));
+			if (!((Object)(object)WaterSystem.Instance == (Object)null) && WaterLevel.Test(float3.op_Implicit(val), waves: false, volumes: false) && !(TerrainMeta.HeightMap.GetHeight(float3.op_Implicit(val)) > val.y) && !EnvironmentManager.Check(float3.op_Implicit(val), EnvironmentType.UnderwaterLab, 30f))
+			{
+				float3 target = GetTarget(val, ref random);
+				float3 val2 = math.normalize(target - val);
+				fishData[num] = new FishData
+				{
+					isAlive = true,
+					spawnX = val.x,
+					spawnZ = val.z,
+					destinationX = target.x,
+					destinationZ = target.z,
+					scale = ((Random)(ref random)).NextFloat(fishType.minScale, fishType.maxScale)
+				};
+				fishRenderData[num] = new FishRenderData
+				{
+					position = val,
+					rotation = math.atan2(val2.z, val2.x),
+					scale = 0f,
+					seed = ((Random)(ref random)).NextFloat(0f, 2f)
+				};
+				num++;
+			}
+		}
+		fishCount[0] = num;
+	}
+
+	public void OnUpdate(float3 cameraPosition)
+	{
+		//IL_0001: Unknown result type (might be due to invalid IL or missing references)
+		UpdateJobs(cameraPosition);
+	}
+
+	private unsafe void UpdateJobs(float3 cameraPosition)
+	{
+		//IL_001c: Unknown result type (might be due to invalid IL or missing references)
+		//IL_001d: Unknown result type (might be due to invalid IL or missing references)
+		//IL_008e: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0093: Unknown result type (might be due to invalid IL or missing references)
+		//IL_009b: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00a0: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00a8: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00ad: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00b5: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00ba: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00d6: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00db: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00e3: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00e8: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00f0: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00f5: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00fd: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0102: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0115: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0116: Unknown result type (might be due to invalid IL or missing references)
+		//IL_017a: Unknown result type (might be due to invalid IL or missing references)
+		//IL_018c: Unknown result type (might be due to invalid IL or missing references)
+		//IL_01b8: Unknown result type (might be due to invalid IL or missing references)
+		//IL_01bd: Unknown result type (might be due to invalid IL or missing references)
+		//IL_01c5: Unknown result type (might be due to invalid IL or missing references)
+		//IL_01ca: Unknown result type (might be due to invalid IL or missing references)
+		//IL_01d2: Unknown result type (might be due to invalid IL or missing references)
+		//IL_01d7: Unknown result type (might be due to invalid IL or missing references)
+		//IL_01e5: Unknown result type (might be due to invalid IL or missing references)
+		//IL_01eb: Unknown result type (might be due to invalid IL or missing references)
+		//IL_01ed: Unknown result type (might be due to invalid IL or missing references)
+		//IL_01f2: Unknown result type (might be due to invalid IL or missing references)
+		//IL_01f9: Unknown result type (might be due to invalid IL or missing references)
+		//IL_01ff: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0206: Unknown result type (might be due to invalid IL or missing references)
+		//IL_020b: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0210: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0219: Unknown result type (might be due to invalid IL or missing references)
+		//IL_021e: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0223: Unknown result type (might be due to invalid IL or missing references)
+		//IL_022f: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0234: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0239: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0242: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0247: Unknown result type (might be due to invalid IL or missing references)
+		//IL_024c: Unknown result type (might be due to invalid IL or missing references)
+		((JobHandle)(ref jobHandle)).Complete();
+		int num = fishCount[0];
+		if (num != 0)
+		{
+			float item = WaterLevel.GetWaterAndTerrainSurface(float3.op_Implicit(cameraPosition), waves: false, volumes: false).Item1;
+			item -= 3f;
+			int castCount = math.min(fishType.castsPerFrame, num);
+			uint seed = (uint)(Time.frameCount + fishType.mesh.vertexCount);
+			FishCollisionGatherJob fishCollisionGatherJob = default(FishCollisionGatherJob);
+			fishCollisionGatherJob.layerMask = -1;
+			fishCollisionGatherJob.seed = seed;
+			fishCollisionGatherJob.castCount = castCount;
+			fishCollisionGatherJob.fishCount = num;
+			fishCollisionGatherJob.castCommands = castCommands;
+			fishCollisionGatherJob.fishCastIndices = fishCastIndices;
+			fishCollisionGatherJob.fishDataArray = fishData;
+			fishCollisionGatherJob.fishRenderDataArray = fishRenderData;
+			FishCollisionGatherJob fishCollisionGatherJob2 = fishCollisionGatherJob;
+			FishCollisionProcessJob fishCollisionProcessJob = default(FishCollisionProcessJob);
+			fishCollisionProcessJob.castCount = castCount;
+			fishCollisionProcessJob.castResults = castResults;
+			fishCollisionProcessJob.fishCastIndices = fishCastIndices;
+			fishCollisionProcessJob.fishDataArray = fishData;
+			fishCollisionProcessJob.fishRenderDataArray = fishRenderData;
+			FishCollisionProcessJob fishCollisionProcessJob2 = fishCollisionProcessJob;
+			FishUpdateJob fishUpdateJob = default(FishUpdateJob);
+			fishUpdateJob.cameraPosition = cameraPosition;
+			fishUpdateJob.seed = seed;
+			fishUpdateJob.dt = Time.deltaTime;
+			fishUpdateJob.minSpeed = fishType.minSpeed;
+			fishUpdateJob.maxSpeed = fishType.maxSpeed;
+			fishUpdateJob.minTurnSpeed = fishType.minTurnSpeed;
+			fishUpdateJob.maxTurnSpeed = fishType.maxTurnSpeed;
+			fishUpdateJob.fishDataArray = (FishData*)NativeArrayUnsafeUtility.GetUnsafePtr<FishData>(fishData);
+			fishUpdateJob.fishRenderDataArray = (FishRenderData*)NativeArrayUnsafeUtility.GetUnsafePtr<FishRenderData>(fishRenderData);
+			fishUpdateJob.minDepth = item - 3f;
+			FishUpdateJob fishUpdateJob2 = fishUpdateJob;
+			KillFish killFish = default(KillFish);
+			killFish.fishCount = fishCount;
+			killFish.fishDataArray = fishData;
+			killFish.fishRenderDataArray = fishRenderData;
+			KillFish killFish2 = killFish;
+			jobHandle = IJobExtensions.Schedule<FishCollisionGatherJob>(fishCollisionGatherJob2, default(JobHandle));
+			jobHandle = RaycastCommand.ScheduleBatch(castCommands, castResults, 5, jobHandle);
+			jobHandle = IJobExtensions.Schedule<FishCollisionProcessJob>(fishCollisionProcessJob2, jobHandle);
+			jobHandle = IJobParallelForExtensions.Schedule<FishUpdateJob>(fishUpdateJob2, num, 10, jobHandle);
+			jobHandle = IJobExtensions.Schedule<KillFish>(killFish2, jobHandle);
+		}
+	}
+
+	public void OnLateUpdate(float3 cameraPosition)
+	{
+		//IL_001c: Unknown result type (might be due to invalid IL or missing references)
+		//IL_001d: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0022: Unknown result type (might be due to invalid IL or missing references)
+		//IL_002c: Unknown result type (might be due to invalid IL or missing references)
+		//IL_003d: Unknown result type (might be due to invalid IL or missing references)
+		//IL_005e: Unknown result type (might be due to invalid IL or missing references)
+		((JobHandle)(ref jobHandle)).Complete();
+		if (fishCount[0] != 0)
+		{
+			Bounds val = default(Bounds);
+			((Bounds)(ref val))..ctor(float3.op_Implicit(cameraPosition), Vector3.one * 40f);
+			fishBuffer.SetData<FishRenderData>(fishRenderData);
+			Graphics.DrawMeshInstancedProcedural(fishType.mesh, 0, fishType.material, val, fishCount[0], materialPropertyBlock, (ShadowCastingMode)1, true, 0, (Camera)null, (LightProbeUsage)1, (LightProbeProxyVolume)null);
+		}
+	}
+
+	public void Dispose()
+	{
+		((JobHandle)(ref jobHandle)).Complete();
+		castCommands.Dispose();
+		castResults.Dispose();
+		fishCastIndices.Dispose();
+		fishData.Dispose();
+		fishRenderData.Dispose();
+		fishCount.Dispose();
+		fishBuffer.Dispose();
+	}
+
+	public void OnDrawGizmosSelected()
+	{
+		((JobHandle)(ref jobHandle)).Complete();
+		_ = fishCount[0];
+	}
+}
+
+
+using System;
+using UnityEngine;
+
+[Serializable]
+public struct FishType
+{
+	public Mesh mesh;
+
+	public Material material;
+
+	public int castsPerFrame;
+
+	public int maxCount;
+
+	public float minSpeed;
+
+	public float maxSpeed;
+
+	public float idealDepth;
+
+	public float minTurnSpeed;
+
+	public float maxTurnSpeed;
+
+	public float minScale;
+
+	public float maxScale;
+}
+
+
+public struct FishData
+{
+	public bool isAlive;
+
+	public float updateTime;
+
+	public float startleTime;
+
+	public float spawnX;
+
+	public float spawnZ;
+
+	public float destinationX;
+
+	public float destinationZ;
+
+	public float directionX;
+
+	public float directionZ;
+
+	public float speed;
+
+	public float scale;
+}
+
+
+using Unity.Mathematics;
+
+public struct FishRenderData
+{
+	public float3 position;
+
+	public float rotation;
+
+	public float scale;
+
+	public float distance;
+
+	public float seed;
+}
+
+
+using Unity.Collections;
+using Unity.Jobs;
+using Unity.Mathematics;
+using UnityEngine;
+
+public struct FishCollisionGatherJob : IJob
+{
+	public int layerMask;
+
+	public uint seed;
+
+	public int castCount;
+
+	public int fishCount;
+
+	public NativeArray<RaycastCommand> castCommands;
+
+	public NativeArray<FishData> fishDataArray;
+
+	public NativeArray<FishRenderData> fishRenderDataArray;
+
+	public NativeArray<int> fishCastIndices;
+
+	public void Execute()
+	{
+		//IL_0078: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0082: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0087: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00a6: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00ab: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00d6: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0032: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0038: Unknown result type (might be due to invalid IL or missing references)
+		Random val = default(Random);
+		((Random)(ref val))..ctor(seed);
+		int length = castCommands.Length;
+		for (int i = 0; i < length; i++)
+		{
+			RaycastCommand val3;
+			if (i >= castCount)
+			{
+				val3 = (castCommands[i] = default(RaycastCommand));
+				continue;
+			}
+			int num = ((Random)(ref val)).NextInt(0, fishCount);
+			FishData fishData = fishDataArray[num];
+			FishRenderData fishRenderData = fishRenderDataArray[num];
+			ref NativeArray<RaycastCommand> reference = ref castCommands;
+			int num2 = i;
+			val3 = default(RaycastCommand);
+			((RaycastCommand)(ref val3)).from = float3.op_Implicit(fishRenderData.position);
+			((RaycastCommand)(ref val3)).direction = float3.op_Implicit(new float3(fishData.directionX, 0f, fishData.directionZ));
+			((RaycastCommand)(ref val3)).distance = 4f;
+			((RaycastCommand)(ref val3)).layerMask = layerMask;
+			((RaycastCommand)(ref val3)).maxHits = 1;
+			reference[num2] = val3;
+			fishCastIndices[i] = num;
+		}
+	}
+}
+
+
+using Unity.Collections;
+using Unity.Jobs;
+using Unity.Mathematics;
+using UnityEngine;
+
+public struct FishCollisionProcessJob : IJob
+{
+	public int castCount;
+
+	public NativeArray<FishData> fishDataArray;
+
+	[ReadOnly]
+	public NativeArray<RaycastHit> castResults;
+
+	[ReadOnly]
+	public NativeArray<int> fishCastIndices;
+
+	[ReadOnly]
+	public NativeArray<FishRenderData> fishRenderDataArray;
+
+	public void Execute()
+	{
+		//IL_000e: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0013: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0016: Unknown result type (might be due to invalid IL or missing references)
+		//IL_001d: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0023: Unknown result type (might be due to invalid IL or missing references)
+		//IL_006f: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0074: Unknown result type (might be due to invalid IL or missing references)
+		//IL_007d: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0082: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0085: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0096: Unknown result type (might be due to invalid IL or missing references)
+		//IL_009b: Unknown result type (might be due to invalid IL or missing references)
+		//IL_009e: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00a8: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00ad: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00af: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00b4: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00b9: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00bb: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00bd: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00c4: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00c9: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00ce: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00d2: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00e0: Unknown result type (might be due to invalid IL or missing references)
+		for (int i = 0; i < castCount; i++)
+		{
+			RaycastHit val = castResults[i];
+			if (((RaycastHit)(ref val)).normal != default(Vector3))
+			{
+				int num = fishCastIndices[i];
+				FishData fishData = fishDataArray[num];
+				if (fishData.startleTime <= 0f)
+				{
+					FishRenderData fishRenderData = fishRenderDataArray[num];
+					float2 xz = ((float3)(ref fishRenderData.position)).xz;
+					val = castResults[i];
+					float x = ((RaycastHit)(ref val)).point.x;
+					val = castResults[i];
+					float2 val2 = math.normalize(new float2(x, ((RaycastHit)(ref val)).point.z) - xz);
+					float2 val3 = xz - val2 * 8f;
+					fishData.destinationX = val3.x;
+					fishData.destinationZ = val3.y;
+					fishData.startleTime = 2f;
+					fishData.updateTime = 6f;
+					fishDataArray[num] = fishData;
+				}
+			}
+		}
+	}
+}
+
+
+using System;
+using System.Runtime.CompilerServices;
+using Unity.Collections.LowLevel.Unsafe;
+using Unity.Jobs;
+using Unity.Mathematics;
+
+public struct FishUpdateJob : IJobParallelFor
+{
+	[ReadOnly]
+	public float3 cameraPosition;
+
+	[ReadOnly]
+	public uint seed;
+
+	[ReadOnly]
+	public float dt;
+
+	[ReadOnly]
+	public float minSpeed;
+
+	[ReadOnly]
+	public float maxSpeed;
+
+	[ReadOnly]
+	public float minTurnSpeed;
+
+	[ReadOnly]
+	public float maxTurnSpeed;
+
+	[ReadOnly]
+	public float minDepth;
+
+	[NativeDisableUnsafePtrRestriction]
+	public unsafe FishData* fishDataArray;
+
+	[NativeDisableUnsafePtrRestriction]
+	public unsafe FishRenderData* fishRenderDataArray;
+
+	public unsafe void Execute(int i)
+	{
+		//IL_003d: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0043: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00f4: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00fb: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0100: Unknown result type (might be due to invalid IL or missing references)
+		//IL_010e: Unknown result type (might be due to invalid IL or missing references)
+		//IL_011b: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00cf: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00d2: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0179: Unknown result type (might be due to invalid IL or missing references)
+		//IL_017c: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0181: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0186: Unknown result type (might be due to invalid IL or missing references)
+		//IL_018b: Unknown result type (might be due to invalid IL or missing references)
+		//IL_018d: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0194: Unknown result type (might be due to invalid IL or missing references)
+		//IL_01e5: Unknown result type (might be due to invalid IL or missing references)
+		//IL_01ea: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0206: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0213: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0226: Unknown result type (might be due to invalid IL or missing references)
+		//IL_022b: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0233: Unknown result type (might be due to invalid IL or missing references)
+		//IL_023e: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0243: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0248: Unknown result type (might be due to invalid IL or missing references)
+		FishData* ptr = fishDataArray + i;
+		FishRenderData* ptr2 = fishRenderDataArray + i;
+		Random random = default(Random);
+		((Random)(ref random))..ctor((uint)(i * 3245 + seed));
+		float num = math.distancesq(cameraPosition, ptr2->position);
+		bool flag = ptr->startleTime > 0f;
+		if (num > math.pow(40f, 2f) || ((float3)(&ptr2->position)).y > minDepth)
+		{
+			ptr->isAlive = false;
+			return;
+		}
+		if (!flag && num < 100f)
+		{
+			ptr->startleTime = 2f;
+			flag = true;
+		}
+		float3 val = default(float3);
+		((float3)(ref val))..ctor(ptr->destinationX, ((float3)(&ptr2->position)).y, ptr->destinationZ);
+		if (ptr->updateTime >= 8f || math.distancesq(val, ptr2->position) < 1f)
+		{
+			float3 target = GetTarget(new float3(ptr->spawnX, 0f, ptr->spawnZ), ref random);
+			ptr->updateTime = 0f;
+			ptr->destinationX = target.x;
+			ptr->destinationZ = target.z;
+		}
+		ptr2->scale = math.lerp(ptr2->scale, ptr->scale, dt * 5f);
+		ptr->speed = math.lerp(ptr->speed, flag ? maxSpeed : minSpeed, dt * 4f);
+		float3 val2 = math.normalize(val - ptr2->position);
+		float a = math.atan2(val2.z, val2.x);
+		ptr2->rotation = 0f - ptr2->rotation + MathF.PI / 2f;
+		float num2 = (flag ? maxTurnSpeed : minTurnSpeed);
+		ptr2->rotation = LerpAngle(ptr2->rotation, a, dt * num2);
+		float3 zero = float3.zero;
+		math.sincos(ptr2->rotation, ref zero.z, ref zero.x);
+		ptr->directionX = zero.x;
+		ptr->directionZ = zero.z;
+		float3* position = &ptr2->position;
+		Unsafe.Write(position, *position + zero * ptr->speed * dt);
+		ptr2->rotation = 0f - ptr2->rotation + MathF.PI / 2f;
+		ptr2->distance += ptr->speed * dt;
+		ptr->updateTime += dt;
+		ptr->startleTime -= dt;
+	}
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	private static float LerpAngle(float a0, float a1, float t)
+	{
+		float num = a1 - a0;
+		num = math.clamp(num - math.floor(num / (MathF.PI * 2f)) * (MathF.PI * 2f), 0f, MathF.PI * 2f);
+		return math.lerp(a0, a0 + ((num > MathF.PI) ? (num - MathF.PI * 2f) : num), t);
+	}
+}
+
+
+using Unity.Collections;
+using Unity.Jobs;
+
+public struct KillFish : IJob
+{
+	public NativeArray<FishData> fishDataArray;
+
+	public NativeArray<FishRenderData> fishRenderDataArray;
+
+	public NativeArray<int> fishCount;
+
+	public void Execute()
+	{
+		int num = fishCount[0];
+		for (int num2 = num - 1; num2 >= 0; num2--)
+		{
+			if (!fishDataArray[num2].isAlive)
+			{
+				if (num2 < num - 1)
+				{
+					fishDataArray[num2] = fishDataArray[num - 1];
+					fishRenderDataArray[num2] = fishRenderDataArray[num - 1];
+				}
+				num--;
+			}
+		}
+		fishCount[0] = num;
+	}
+}
+
+
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -3057,6 +4055,18 @@ public class WaterDepthTester : MonoBehaviour
 	private void Update()
 	{
 	}
+}
+
+
+using UnityEngine;
+
+public class WorkshopRenderSettings : MonoBehaviour
+{
+	public ItemDefinition ItemDefinition;
+
+	public bool ToggleLightingRig;
+
+	public Transform LightingRig;
 }
 
 
@@ -12122,16 +13132,16 @@ public class Socket_Free_Snappable : Socket_Free
 	[ClientVar]
 	public static bool DebugSnapping = false;
 
-	[Header("Snapping - General")]
 	[SerializeField]
+	[Header("Snapping - General")]
 	private float generalPadding;
 
-	[Header("Snapping - Walls")]
 	[SerializeField]
+	[Header("Snapping - Walls")]
 	private float snappingPadding;
 
-	[Header("Snapping - Corners")]
 	[SerializeField]
+	[Header("Snapping - Corners")]
 	private bool allowSnappingToCorners = true;
 
 	[SerializeField]
@@ -12168,6 +13178,15 @@ public class Socket_Free_Snappable : Socket_Free
 				YPadding = 0f,
 				NormalPadding = 0.1f,
 				PaddingMode = BuildingBlockPadding.PaddingType.StrongsideOnly
+			}
+		},
+		{
+			"assets/prefabs/building core/wall/wall.twig.prefab",
+			new BuildingBlockPadding
+			{
+				YPadding = 0f,
+				NormalPadding = 0.1f,
+				PaddingMode = BuildingBlockPadding.PaddingType.Both
 			}
 		}
 	};
@@ -12532,53 +13551,54 @@ public class Socket_Free_Snappable : Socket_Free
 		//IL_004c: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0050: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0055: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0062: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0063: Unknown result type (might be due to invalid IL or missing references)
+		//IL_005a: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0067: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0068: Unknown result type (might be due to invalid IL or missing references)
-		//IL_006e: Unknown result type (might be due to invalid IL or missing references)
+		//IL_006d: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0073: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0078: Unknown result type (might be due to invalid IL or missing references)
 		//IL_007d: Unknown result type (might be due to invalid IL or missing references)
-		//IL_007f: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0082: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0084: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0089: Unknown result type (might be due to invalid IL or missing references)
 		//IL_008e: Unknown result type (might be due to invalid IL or missing references)
-		//IL_008f: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0092: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0093: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0094: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0097: Unknown result type (might be due to invalid IL or missing references)
 		//IL_009c: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00a0: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00a1: Unknown result type (might be due to invalid IL or missing references)
 		//IL_00a5: Unknown result type (might be due to invalid IL or missing references)
 		//IL_00aa: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00ac: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00ae: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00f5: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00c1: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00c3: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00c5: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00e0: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00af: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00b1: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00b3: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00fa: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00c6: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00c8: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00ca: Unknown result type (might be due to invalid IL or missing references)
 		//IL_00e5: Unknown result type (might be due to invalid IL or missing references)
 		//IL_00ea: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00ec: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00ed: Unknown result type (might be due to invalid IL or missing references)
 		//IL_00ef: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00f1: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00f2: Unknown result type (might be due to invalid IL or missing references)
 		//IL_00f4: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00f9: Unknown result type (might be due to invalid IL or missing references)
 		Vector3 normal = ((RaycastHit)(ref bestHit)).normal;
 		normal.y = 0f;
 		Quaternion val = ((normal == Vector3.zero) ? Quaternion.identity : Quaternion.LookRotation(normal, Vector3.up));
 		Vector3 val2 = ((RaycastHit)(ref bestHit)).point - ((Ray)(ref target.ray)).origin;
-		Vector3 normalized = ((Vector3)(ref val2)).normalized;
-		normalized.y = 0f;
-		Quaternion val3 = Quaternion.LookRotation(normalized, Vector3.up) * Quaternion.Euler(target.rotation);
-		Quaternion val4 = val * Quaternion.Euler(target.rotation);
-		Vector3 val5 = val4 * ((RaycastHit)(ref bestHit)).normal;
-		Vector3 val6 = val3 * ((RaycastHit)(ref bestHit)).normal;
-		if (Mathf.Abs(Vector3.Dot(val6, val5)) < 0.5f)
+		Vector3 val3 = -((Vector3)(ref val2)).normalized;
+		val3.y = 0f;
+		Quaternion val4 = Quaternion.LookRotation(val3, Vector3.up) * Quaternion.Euler(target.rotation);
+		Quaternion val5 = val * Quaternion.Euler(target.rotation);
+		Vector3 val6 = val5 * ((RaycastHit)(ref bestHit)).normal;
+		Vector3 val7 = val4 * ((RaycastHit)(ref bestHit)).normal;
+		if (Mathf.Abs(Vector3.Dot(val7, val6)) < 0.5f)
 		{
-			Quaternion val7 = Quaternion.AngleAxis(Mathf.Round(Vector3.SignedAngle(val5, val6, Vector3.up) / 90f) * 90f, Vector3.up);
-			val4 *= val7;
+			Quaternion val8 = Quaternion.AngleAxis(Mathf.Round(Vector3.SignedAngle(val6, val7, Vector3.up) / 90f) * 90f, Vector3.up);
+			val5 *= val8;
 		}
-		return val4;
+		return val5;
 	}
 
 	private Vector3 ComputeSnappedPosition(Construction.Target target, RaycastHit bestHit, Quaternion targetRotation)
@@ -13985,8 +15005,8 @@ public class GameObjectToggleState : StateMachineBehaviour
 {
 	public bool UseCurve;
 
-	[MinMax(0f, 1f)]
 	[Tooltip("The normalised range in the animation in which to apply the TargetState")]
+	[MinMax(0f, 1f)]
 	public Vector2 ValidNormalisedRange;
 
 	public AnimationCurve CurveRange = AnimationCurve.Linear(0f, 0f, 1f, 0f);
@@ -14533,8 +15553,8 @@ public class OxygenOverlay : MonoBehaviour
 	[SerializeField]
 	private float smoothTime = 1f;
 
-	[SerializeField]
 	[Tooltip("If true, only show this effect when the player is mounted in a submarine.")]
+	[SerializeField]
 	private bool submarinesOnly;
 }
 
@@ -14880,6 +15900,8 @@ public class Client : SingletonComponent<Client>
 	public static Phrase loading_queue_status = new Phrase("loading.queue.status", "{0:N0} PLAYERS AHEAD OF YOU, {1:N0} PLAYERS BEHIND");
 
 	public static Phrase loading_queue_next = new Phrase("loading.queue.next", "YOU'RE NEXT - {1:N0} PLAYERS BEHIND YOU");
+
+	public static Phrase party_too_large_phrase = new Phrase("loading.party_too_large", "Party too large to join server: max team size {0}");
 }
 
 
@@ -16997,6 +18019,9 @@ public class MeshPaintController : MonoBehaviour, IClientComponent
 
 	public float maxBrushScale = 32f;
 
+	[Tooltip("When auto-saving is enabled, this is the interval in seconds between saves.")]
+	public float autoSaveInterval = 30f;
+
 	public RustButton UndoButton;
 
 	public RustButton RedoButton;
@@ -17096,6 +18121,8 @@ public class Model : MonoBehaviour, IPrefabPreProcess
 	internal BoneDictionary boneDict;
 
 	internal int skin;
+
+	bool IPrefabPreProcess.CanRunDuringBundling => false;
 
 	protected void OnEnable()
 	{
@@ -17465,6 +18492,8 @@ public class PlayerModelSkin : MonoBehaviour, IPrefabPreProcess
 
 	public Renderer SkinRenderer;
 
+	bool IPrefabPreProcess.CanRunDuringBundling => false;
+
 	public void Setup(SkinSetCollection skin, float hairNum, float meshNum)
 	{
 		if (Object.op_Implicit((Object)(object)SkinRenderer) && Object.op_Implicit((Object)(object)skin))
@@ -17551,13 +18580,15 @@ public interface IPosLerpTarget : ILerpInfo
 
 
 using System;
+using Development.Attributes;
 using Facepunch;
 using Rust.Interpolation;
 using UnityEngine;
 
+[ResetStaticFields]
 public class PositionLerp : IPooled
 {
-	private static readonly ListHashSet<PositionLerp> InstanceList = new ListHashSet<PositionLerp>();
+	private static ListHashSet<PositionLerp> InstanceList = new ListHashSet<PositionLerp>();
 
 	public static bool DebugLog = false;
 
@@ -17918,7 +18949,7 @@ using ConVar;
 using Rust;
 using UnityEngine;
 
-public class Projectile : BaseMonoBehaviour
+public class Projectile : ListComponent<Projectile>
 {
 	public enum EffectMatchMode
 	{
@@ -17967,8 +18998,8 @@ public class Projectile : BaseMonoBehaviour
 
 	public float thickness;
 
-	[Tooltip("Tick this box to be able to change the initial orientation of the projectile")]
 	[Header("Orientation")]
+	[Tooltip("Tick this box to be able to change the initial orientation of the projectile")]
 	public bool changeInitialOrientation;
 
 	[Tooltip("This projectile will raycast for this many units, and then become a projectile. This is typically done for bullets.")]
@@ -18220,6 +19251,11 @@ public class QueryVis : BaseMonoBehaviour, IClientComponent
 	public CoverageQueries.RadiusSpace coverageRadiusSpace = CoverageQueries.RadiusSpace.World;
 
 	public float coverageRadius = 0.2f;
+}
+
+
+public class QueryVisJobRunner : BaseMonoBehaviour, IClientComponent
+{
 }
 
 
@@ -18674,6 +19710,7 @@ public class TokenisedPhrase : Phrase
 		str = str.Replace("[+jump]", string.Format("[{0}]", Input.GetButtonWithBind("+jump", false)).ToUpper());
 		str = str.Replace("[movement]", ("[" + TranslateMouseButton(Input.GetButtonWithBind("+forward", false)) + TranslateMouseButton(Input.GetButtonWithBind("+left", false)) + TranslateMouseButton(Input.GetButtonWithBind("+backward", false)) + TranslateMouseButton(Input.GetButtonWithBind("+right", false)) + "]").ToUpper());
 		str = str.Replace("[+help]", string.Format("[{0}]", Input.GetButtonWithBind("+opentutorialhelp", false)).ToUpper());
+		str = str.Replace("[chat.open]", string.Format("[{0}]", Input.GetButtonWithBind("chat.open", false)).ToUpper());
 		return str;
 	}
 
@@ -20076,126 +21113,188 @@ public static class GamePhysics
 		//IL_0028: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0029: Unknown result type (might be due to invalid IL or missing references)
 		//IL_002e: Unknown result type (might be due to invalid IL or missing references)
-		//IL_016b: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0170: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0055: Unknown result type (might be due to invalid IL or missing references)
-		//IL_005a: Unknown result type (might be due to invalid IL or missing references)
-		//IL_005c: Unknown result type (might be due to invalid IL or missing references)
-		//IL_005e: Unknown result type (might be due to invalid IL or missing references)
-		//IL_018d: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0192: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0198: Unknown result type (might be due to invalid IL or missing references)
-		//IL_019d: Unknown result type (might be due to invalid IL or missing references)
-		//IL_01a1: Unknown result type (might be due to invalid IL or missing references)
-		//IL_01a6: Unknown result type (might be due to invalid IL or missing references)
-		//IL_01b2: Unknown result type (might be due to invalid IL or missing references)
-		//IL_01b6: Unknown result type (might be due to invalid IL or missing references)
-		//IL_01ef: Unknown result type (might be due to invalid IL or missing references)
-		//IL_01f5: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0089: Unknown result type (might be due to invalid IL or missing references)
-		//IL_008e: Unknown result type (might be due to invalid IL or missing references)
-		//IL_01cf: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00a7: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00ae: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00b8: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00ce: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00d6: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00df: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00e8: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00ec: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00f1: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00f6: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0104: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0106: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0111: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0123: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0129: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0043: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0044: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0032: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0033: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0035: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0036: Unknown result type (might be due to invalid IL or missing references)
+		//IL_003b: Unknown result type (might be due to invalid IL or missing references)
 		TimeWarning val = TimeWarning.New("GamePhysics.TraceRaysUnordered", 0);
 		try
 		{
 			int batchSize = GetBatchSize(rays.Length);
-			JobHandle val2 = RaycastCommand.ScheduleBatch(rays, hits, batchSize, maxHitsPerTrace, default(JobHandle));
-			((JobHandle)(ref val2)).Complete();
-			RaycastHit val5;
+			JobHandle inputDeps = RaycastCommand.ScheduleBatch(rays, hits, batchSize, maxHitsPerTrace, default(JobHandle));
 			if (traceWater)
 			{
-				TimeWarning val3 = TimeWarning.New("TraceWater", 0);
-				try
-				{
-					Ray ray = default(Ray);
-					for (int i = 0; i < rays.Length; i++)
-					{
-						RaycastCommand val4 = rays[i];
-						if ((val4.queryParameters.layerMask & 0x10) == 0)
-						{
-							continue;
-						}
-						int j;
-						for (j = 0; j < maxHitsPerTrace; j++)
-						{
-							val5 = hits[i * maxHitsPerTrace + j];
-							if (((RaycastHit)(ref val5)).colliderInstanceID == 0)
-							{
-								break;
-							}
-						}
-						if (j == maxHitsPerTrace)
-						{
-							break;
-						}
-						((Ray)(ref ray))..ctor(((RaycastCommand)(ref val4)).from, ((RaycastCommand)(ref val4)).direction);
-						if (WaterSystem.Trace(ray, out var position, out var normal, ((RaycastCommand)(ref val4)).distance))
-						{
-							val5 = default(RaycastHit);
-							((RaycastHit)(ref val5)).point = position;
-							((RaycastHit)(ref val5)).normal = normal;
-							Vector3 val6 = position - ((Ray)(ref ray)).origin;
-							((RaycastHit)(ref val5)).distance = ((Vector3)(ref val6)).magnitude;
-							RaycastHit val7 = val5;
-							hits[j++] = val7;
-							if (j < maxHitsPerTrace)
-							{
-								val5 = (hits[j] = default(RaycastHit));
-							}
-						}
-					}
-				}
-				finally
-				{
-					((IDisposable)val3)?.Dispose();
-				}
+				inputDeps = TraceWaterRaysDeferred(hits, rays, maxHitsPerTrace, inputDeps);
 			}
-			TimeWarning val9 = TimeWarning.New("Verify", 0);
-			try
+			((JobHandle)(ref inputDeps)).Complete();
+			VerifyRays(hits, rays, maxHitsPerTrace);
+		}
+		finally
+		{
+			((IDisposable)val)?.Dispose();
+		}
+	}
+
+	public static JobHandle TraceWaterRaysDeferred(NativeArray<RaycastHit> hits, NativeArray<RaycastCommand> rays, int maxHitsPerTrace, JobHandle inputDeps)
+	{
+		//IL_001e: Unknown result type (might be due to invalid IL or missing references)
+		//IL_001f: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0175: Unknown result type (might be due to invalid IL or missing references)
+		//IL_002e: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0033: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0038: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0041: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0046: Unknown result type (might be due to invalid IL or missing references)
+		//IL_004b: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0055: Unknown result type (might be due to invalid IL or missing references)
+		//IL_005a: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0064: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0069: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0074: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0079: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0084: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0089: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0095: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0096: Unknown result type (might be due to invalid IL or missing references)
+		//IL_009d: Unknown result type (might be due to invalid IL or missing references)
+		//IL_009e: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00ad: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00ae: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00b5: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00b6: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00bd: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00bf: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00ca: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00cb: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00d0: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00d2: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00d3: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00d5: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00d6: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00d8: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00da: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00db: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00e0: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00ec: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00ed: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00f6: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00fb: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0102: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0103: Unknown result type (might be due to invalid IL or missing references)
+		//IL_010a: Unknown result type (might be due to invalid IL or missing references)
+		//IL_010b: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0112: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0114: Unknown result type (might be due to invalid IL or missing references)
+		//IL_011b: Unknown result type (might be due to invalid IL or missing references)
+		//IL_011d: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0128: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0129: Unknown result type (might be due to invalid IL or missing references)
+		//IL_012e: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0132: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0133: Unknown result type (might be due to invalid IL or missing references)
+		//IL_013b: Unknown result type (might be due to invalid IL or missing references)
+		//IL_013c: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0144: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0145: Unknown result type (might be due to invalid IL or missing references)
+		//IL_014d: Unknown result type (might be due to invalid IL or missing references)
+		//IL_014e: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0156: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0157: Unknown result type (might be due to invalid IL or missing references)
+		//IL_015f: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0160: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0166: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0167: Unknown result type (might be due to invalid IL or missing references)
+		TimeWarning val = TimeWarning.New("ScheduleTraceWaterRaysDeferred", 0);
+		try
+		{
+			if (!rays.IsCreated || rays.Length == 0)
 			{
-				for (int k = 0; k < rays.Length; k++)
+				return inputDeps;
+			}
+			NativeList<Vector2i> waterIndices = new NativeList<Vector2i>(rays.Length, AllocatorHandle.op_Implicit((Allocator)3));
+			NativeList<Ray> val2 = new NativeList<Ray>(rays.Length, AllocatorHandle.op_Implicit((Allocator)3));
+			NativeArray<bool> val3 = new NativeArray<bool>(rays.Length, (Allocator)3, (NativeArrayOptions)0);
+			NativeArray<float> val4 = new NativeArray<float>(rays.Length, (Allocator)3, (NativeArrayOptions)0);
+			NativeArray<Vector3> val5 = new NativeArray<Vector3>(rays.Length, (Allocator)3, (NativeArrayOptions)0);
+			NativeArray<Vector3> val6 = new NativeArray<Vector3>(rays.Length, (Allocator)3, (NativeArrayOptions)0);
+			PreProcessWaterRaysJob preProcessWaterRaysJob = default(PreProcessWaterRaysJob);
+			preProcessWaterRaysJob.hits = hits;
+			preProcessWaterRaysJob.rays = rays;
+			preProcessWaterRaysJob.maxHitsPerTrace = maxHitsPerTrace;
+			preProcessWaterRaysJob.WaterIndices = waterIndices;
+			preProcessWaterRaysJob.WaterRays = val2;
+			preProcessWaterRaysJob.WaterMaxDists = val4;
+			PreProcessWaterRaysJob preProcessWaterRaysJob2 = preProcessWaterRaysJob;
+			inputDeps = IJobExtensions.ScheduleByRef<PreProcessWaterRaysJob>(ref preProcessWaterRaysJob2, inputDeps);
+			inputDeps = WaterSystem.ScheduleTraceBatchDefer(val2, val4, val3, val5, val6, inputDeps);
+			PostProcessWaterRaysJob postProcessWaterRaysJob = default(PostProcessWaterRaysJob);
+			postProcessWaterRaysJob.hits = hits;
+			postProcessWaterRaysJob.rays = val2.AsDeferredJobArray();
+			postProcessWaterRaysJob.WaterIndices = waterIndices;
+			postProcessWaterRaysJob.hitsSub = val3;
+			postProcessWaterRaysJob.positionsSub = val5;
+			postProcessWaterRaysJob.normalsSub = val6;
+			PostProcessWaterRaysJob postProcessWaterRaysJob2 = postProcessWaterRaysJob;
+			inputDeps = IJobExtensions.ScheduleByRef<PostProcessWaterRaysJob>(ref postProcessWaterRaysJob2, inputDeps);
+			waterIndices.Dispose(inputDeps);
+			val2.Dispose(inputDeps);
+			val3.Dispose(inputDeps);
+			val4.Dispose(inputDeps);
+			val5.Dispose(inputDeps);
+			val6.Dispose(inputDeps);
+			return inputDeps;
+		}
+		finally
+		{
+			((IDisposable)val)?.Dispose();
+		}
+	}
+
+	public static void VerifyRays(NativeArray<RaycastHit> hits, NativeArray<RaycastCommand> rays, int maxHitsPerCast)
+	{
+		//IL_0016: Unknown result type (might be due to invalid IL or missing references)
+		//IL_001b: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0034: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0039: Unknown result type (might be due to invalid IL or missing references)
+		//IL_003f: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0044: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0048: Unknown result type (might be due to invalid IL or missing references)
+		//IL_004d: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0059: Unknown result type (might be due to invalid IL or missing references)
+		//IL_005d: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0094: Unknown result type (might be due to invalid IL or missing references)
+		//IL_009a: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0075: Unknown result type (might be due to invalid IL or missing references)
+		TimeWarning val = TimeWarning.New("VerifyRays", 0);
+		try
+		{
+			for (int i = 0; i < rays.Length; i++)
+			{
+				RaycastCommand val2 = rays[i];
+				int num = i * maxHitsPerCast;
+				int num2 = 0;
+				RaycastHit val4;
+				for (int j = 0; j < maxHitsPerCast; j++)
 				{
-					RaycastCommand val10 = rays[k];
-					int num = k * maxHitsPerTrace;
-					int num2 = 0;
-					for (int l = 0; l < maxHitsPerTrace; l++)
+					int num3 = i * maxHitsPerCast + j;
+					RaycastHit val3 = hits[num3];
+					val4 = hits[num3];
+					if (((RaycastHit)(ref val4)).normal == Vector3.zero)
 					{
-						int num3 = k * maxHitsPerTrace + l;
-						RaycastHit val11 = hits[num3];
-						val5 = hits[num3];
-						if (((RaycastHit)(ref val5)).normal == Vector3.zero)
-						{
-							break;
-						}
-						if (Verify(val11, ((RaycastCommand)(ref val10)).from))
-						{
-							hits[num + num2++] = val11;
-						}
+						break;
 					}
-					if (num2 < maxHitsPerTrace)
+					if (Verify(val3, ((RaycastCommand)(ref val2)).from))
 					{
-						val5 = (hits[num + num2] = default(RaycastHit));
+						hits[num + num2++] = val3;
 					}
 				}
-			}
-			finally
-			{
-				((IDisposable)val9)?.Dispose();
+				if (num2 < maxHitsPerCast)
+				{
+					val4 = (hits[num + num2] = default(RaycastHit));
+				}
 			}
 		}
 		finally
@@ -20221,126 +21320,188 @@ public static class GamePhysics
 		//IL_0028: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0029: Unknown result type (might be due to invalid IL or missing references)
 		//IL_002e: Unknown result type (might be due to invalid IL or missing references)
-		//IL_016b: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0170: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0055: Unknown result type (might be due to invalid IL or missing references)
-		//IL_005a: Unknown result type (might be due to invalid IL or missing references)
-		//IL_005c: Unknown result type (might be due to invalid IL or missing references)
-		//IL_005e: Unknown result type (might be due to invalid IL or missing references)
-		//IL_018d: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0192: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0198: Unknown result type (might be due to invalid IL or missing references)
-		//IL_019d: Unknown result type (might be due to invalid IL or missing references)
-		//IL_01a1: Unknown result type (might be due to invalid IL or missing references)
-		//IL_01a6: Unknown result type (might be due to invalid IL or missing references)
-		//IL_01b2: Unknown result type (might be due to invalid IL or missing references)
-		//IL_01b6: Unknown result type (might be due to invalid IL or missing references)
-		//IL_01ef: Unknown result type (might be due to invalid IL or missing references)
-		//IL_01f5: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0089: Unknown result type (might be due to invalid IL or missing references)
-		//IL_008e: Unknown result type (might be due to invalid IL or missing references)
-		//IL_01cf: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00a7: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00ae: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00b8: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00ce: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00d6: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00df: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00e8: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00ec: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00f1: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00f6: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0104: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0106: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0111: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0123: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0129: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0043: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0044: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0032: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0033: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0035: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0036: Unknown result type (might be due to invalid IL or missing references)
+		//IL_003b: Unknown result type (might be due to invalid IL or missing references)
 		TimeWarning val = TimeWarning.New("GamePhysics.TraceSpheresUnordered", 0);
 		try
 		{
 			int batchSize = GetBatchSize(spheres.Length);
-			JobHandle val2 = SpherecastCommand.ScheduleBatch(spheres, hits, batchSize, maxHitsPerTrace, default(JobHandle));
-			((JobHandle)(ref val2)).Complete();
-			RaycastHit val5;
+			JobHandle inputDeps = SpherecastCommand.ScheduleBatch(spheres, hits, batchSize, maxHitsPerTrace, default(JobHandle));
 			if (traceWater)
 			{
-				TimeWarning val3 = TimeWarning.New("TraceWater", 0);
-				try
-				{
-					Ray ray = default(Ray);
-					for (int i = 0; i < spheres.Length; i++)
-					{
-						SpherecastCommand val4 = spheres[i];
-						if ((val4.queryParameters.layerMask & 0x10) == 0)
-						{
-							continue;
-						}
-						int j;
-						for (j = 0; j < maxHitsPerTrace; j++)
-						{
-							val5 = hits[i * maxHitsPerTrace + j];
-							if (((RaycastHit)(ref val5)).colliderInstanceID == 0)
-							{
-								break;
-							}
-						}
-						if (j == maxHitsPerTrace)
-						{
-							break;
-						}
-						((Ray)(ref ray))..ctor(((SpherecastCommand)(ref val4)).origin, ((SpherecastCommand)(ref val4)).direction);
-						if (WaterSystem.Trace(ray, out var position, out var normal, ((SpherecastCommand)(ref val4)).distance))
-						{
-							val5 = default(RaycastHit);
-							((RaycastHit)(ref val5)).point = position;
-							((RaycastHit)(ref val5)).normal = normal;
-							Vector3 val6 = position - ((Ray)(ref ray)).origin;
-							((RaycastHit)(ref val5)).distance = ((Vector3)(ref val6)).magnitude;
-							RaycastHit val7 = val5;
-							hits[j++] = val7;
-							if (j < maxHitsPerTrace)
-							{
-								val5 = (hits[j] = default(RaycastHit));
-							}
-						}
-					}
-				}
-				finally
-				{
-					((IDisposable)val3)?.Dispose();
-				}
+				inputDeps = TraceWaterSpheresDeferred(hits, spheres, maxHitsPerTrace, inputDeps);
 			}
-			TimeWarning val9 = TimeWarning.New("Verify", 0);
-			try
+			((JobHandle)(ref inputDeps)).Complete();
+			VerifySpheres(hits, spheres, maxHitsPerTrace);
+		}
+		finally
+		{
+			((IDisposable)val)?.Dispose();
+		}
+	}
+
+	public static JobHandle TraceWaterSpheresDeferred(NativeArray<RaycastHit> hits, NativeArray<SpherecastCommand> spheres, int maxHitsPerTrace, JobHandle inputDeps)
+	{
+		//IL_001e: Unknown result type (might be due to invalid IL or missing references)
+		//IL_001f: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0175: Unknown result type (might be due to invalid IL or missing references)
+		//IL_002e: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0033: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0038: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0041: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0046: Unknown result type (might be due to invalid IL or missing references)
+		//IL_004b: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0055: Unknown result type (might be due to invalid IL or missing references)
+		//IL_005a: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0064: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0069: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0074: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0079: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0084: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0089: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0095: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0096: Unknown result type (might be due to invalid IL or missing references)
+		//IL_009d: Unknown result type (might be due to invalid IL or missing references)
+		//IL_009e: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00ad: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00ae: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00b5: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00b6: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00bd: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00bf: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00ca: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00cb: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00d0: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00d2: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00d3: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00d5: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00d6: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00d8: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00da: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00db: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00e0: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00ec: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00ed: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00f6: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00fb: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0102: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0103: Unknown result type (might be due to invalid IL or missing references)
+		//IL_010a: Unknown result type (might be due to invalid IL or missing references)
+		//IL_010b: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0112: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0114: Unknown result type (might be due to invalid IL or missing references)
+		//IL_011b: Unknown result type (might be due to invalid IL or missing references)
+		//IL_011d: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0128: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0129: Unknown result type (might be due to invalid IL or missing references)
+		//IL_012e: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0132: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0133: Unknown result type (might be due to invalid IL or missing references)
+		//IL_013b: Unknown result type (might be due to invalid IL or missing references)
+		//IL_013c: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0144: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0145: Unknown result type (might be due to invalid IL or missing references)
+		//IL_014d: Unknown result type (might be due to invalid IL or missing references)
+		//IL_014e: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0156: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0157: Unknown result type (might be due to invalid IL or missing references)
+		//IL_015f: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0160: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0166: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0167: Unknown result type (might be due to invalid IL or missing references)
+		TimeWarning val = TimeWarning.New("ScheduleTraceWaterSpheresDeferred", 0);
+		try
+		{
+			if (!spheres.IsCreated || spheres.Length == 0)
 			{
-				for (int k = 0; k < spheres.Length; k++)
+				return inputDeps;
+			}
+			NativeList<Vector2i> waterIndices = new NativeList<Vector2i>(spheres.Length, AllocatorHandle.op_Implicit((Allocator)3));
+			NativeList<Ray> val2 = new NativeList<Ray>(spheres.Length, AllocatorHandle.op_Implicit((Allocator)3));
+			NativeArray<bool> val3 = new NativeArray<bool>(spheres.Length, (Allocator)3, (NativeArrayOptions)0);
+			NativeArray<float> val4 = new NativeArray<float>(spheres.Length, (Allocator)3, (NativeArrayOptions)0);
+			NativeArray<Vector3> val5 = new NativeArray<Vector3>(spheres.Length, (Allocator)3, (NativeArrayOptions)0);
+			NativeArray<Vector3> val6 = new NativeArray<Vector3>(spheres.Length, (Allocator)3, (NativeArrayOptions)0);
+			PreProcessWaterSpheresJob preProcessWaterSpheresJob = default(PreProcessWaterSpheresJob);
+			preProcessWaterSpheresJob.hits = hits;
+			preProcessWaterSpheresJob.rays = spheres;
+			preProcessWaterSpheresJob.maxHitsPerTrace = maxHitsPerTrace;
+			preProcessWaterSpheresJob.WaterIndices = waterIndices;
+			preProcessWaterSpheresJob.WaterRays = val2;
+			preProcessWaterSpheresJob.WaterMaxDists = val4;
+			PreProcessWaterSpheresJob preProcessWaterSpheresJob2 = preProcessWaterSpheresJob;
+			inputDeps = IJobExtensions.ScheduleByRef<PreProcessWaterSpheresJob>(ref preProcessWaterSpheresJob2, inputDeps);
+			inputDeps = WaterSystem.ScheduleTraceBatchDefer(val2, val4, val3, val5, val6, inputDeps);
+			PostProcessWaterRaysJob postProcessWaterRaysJob = default(PostProcessWaterRaysJob);
+			postProcessWaterRaysJob.hits = hits;
+			postProcessWaterRaysJob.rays = val2.AsDeferredJobArray();
+			postProcessWaterRaysJob.WaterIndices = waterIndices;
+			postProcessWaterRaysJob.hitsSub = val3;
+			postProcessWaterRaysJob.positionsSub = val5;
+			postProcessWaterRaysJob.normalsSub = val6;
+			PostProcessWaterRaysJob postProcessWaterRaysJob2 = postProcessWaterRaysJob;
+			inputDeps = IJobExtensions.ScheduleByRef<PostProcessWaterRaysJob>(ref postProcessWaterRaysJob2, inputDeps);
+			waterIndices.Dispose(inputDeps);
+			val2.Dispose(inputDeps);
+			val3.Dispose(inputDeps);
+			val4.Dispose(inputDeps);
+			val5.Dispose(inputDeps);
+			val6.Dispose(inputDeps);
+			return inputDeps;
+		}
+		finally
+		{
+			((IDisposable)val)?.Dispose();
+		}
+	}
+
+	public static void VerifySpheres(NativeArray<RaycastHit> hits, NativeArray<SpherecastCommand> spheres, int maxHitsPerCast)
+	{
+		//IL_0016: Unknown result type (might be due to invalid IL or missing references)
+		//IL_001b: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0034: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0039: Unknown result type (might be due to invalid IL or missing references)
+		//IL_003f: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0044: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0048: Unknown result type (might be due to invalid IL or missing references)
+		//IL_004d: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0059: Unknown result type (might be due to invalid IL or missing references)
+		//IL_005d: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0094: Unknown result type (might be due to invalid IL or missing references)
+		//IL_009a: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0075: Unknown result type (might be due to invalid IL or missing references)
+		TimeWarning val = TimeWarning.New("VerifySpheres", 0);
+		try
+		{
+			for (int i = 0; i < spheres.Length; i++)
+			{
+				SpherecastCommand val2 = spheres[i];
+				int num = i * maxHitsPerCast;
+				int num2 = 0;
+				RaycastHit val4;
+				for (int j = 0; j < maxHitsPerCast; j++)
 				{
-					SpherecastCommand val10 = spheres[k];
-					int num = k * maxHitsPerTrace;
-					int num2 = 0;
-					for (int l = 0; l < maxHitsPerTrace; l++)
+					int num3 = i * maxHitsPerCast + j;
+					RaycastHit val3 = hits[num3];
+					val4 = hits[num3];
+					if (((RaycastHit)(ref val4)).normal == Vector3.zero)
 					{
-						int num3 = k * maxHitsPerTrace + l;
-						RaycastHit val11 = hits[num3];
-						val5 = hits[num3];
-						if (((RaycastHit)(ref val5)).normal == Vector3.zero)
-						{
-							break;
-						}
-						if (Verify(val11, ((SpherecastCommand)(ref val10)).origin))
-						{
-							hits[num + num2++] = val11;
-						}
+						break;
 					}
-					if (num2 < maxHitsPerTrace)
+					if (Verify(val3, ((SpherecastCommand)(ref val2)).origin))
 					{
-						val5 = (hits[num + num2] = default(RaycastHit));
+						hits[num + num2++] = val3;
 					}
 				}
-			}
-			finally
-			{
-				((IDisposable)val9)?.Dispose();
+				if (num2 < maxHitsPerCast)
+				{
+					val4 = (hits[num + num2] = default(RaycastHit));
+				}
 			}
 		}
 		finally
@@ -20517,7 +21678,7 @@ public static class GamePhysics
 			}
 			return true;
 		}
-		if (CompareEntity(collider.ToBaseEntity(), ignoreEntity))
+		if (!ignoreEntity.IsRealNull() && CompareEntity(collider.ToBaseEntity(), ignoreEntity))
 		{
 			return false;
 		}
@@ -20910,6 +22071,17 @@ public class HitboxSystem : MonoBehaviour, IPrefabPreProcess
 	[Serializable]
 	public class HitboxShape
 	{
+		public struct JobStruct
+		{
+			public Matrix4x4 transform;
+
+			public Matrix4x4 inverseTransform;
+
+			public Vector3 size;
+
+			public HitboxDefinition.Type type;
+		}
+
 		public Transform bone;
 
 		public HitboxDefinition.Type type;
@@ -20984,6 +22156,22 @@ public class HitboxSystem : MonoBehaviour, IPrefabPreProcess
 			//IL_0006: Unknown result type (might be due to invalid IL or missing references)
 			//IL_0007: Unknown result type (might be due to invalid IL or missing references)
 			return ((Matrix4x4)(ref inverseTransform)).MultiplyVector(pt);
+		}
+
+		public JobStruct GetJobStruct()
+		{
+			//IL_000b: Unknown result type (might be due to invalid IL or missing references)
+			//IL_0010: Unknown result type (might be due to invalid IL or missing references)
+			//IL_0018: Unknown result type (might be due to invalid IL or missing references)
+			//IL_001d: Unknown result type (might be due to invalid IL or missing references)
+			//IL_0025: Unknown result type (might be due to invalid IL or missing references)
+			//IL_002a: Unknown result type (might be due to invalid IL or missing references)
+			JobStruct result = default(JobStruct);
+			result.transform = transform;
+			result.inverseTransform = inverseTransform;
+			result.size = Size;
+			result.type = type;
+			return result;
 		}
 
 		public bool Trace(Ray ray, out RaycastHit hit, float forgivness = 0f, float maxDistance = float.PositiveInfinity)
@@ -21066,6 +22254,8 @@ public class HitboxSystem : MonoBehaviour, IPrefabPreProcess
 
 	public List<HitboxShape> hitboxes = new List<HitboxShape>();
 
+	bool IPrefabPreProcess.CanRunDuringBundling => false;
+
 	public void PreProcess(IPrefabProcessor preProcess, GameObject rootObj, string name, bool serverside, bool clientside, bool bundling)
 	{
 		//IL_00ab: Unknown result type (might be due to invalid IL or missing references)
@@ -21116,6 +22306,17 @@ using UnityEngine;
 [Serializable]
 public class HitboxShape
 {
+	public struct JobStruct
+	{
+		public Matrix4x4 transform;
+
+		public Matrix4x4 inverseTransform;
+
+		public Vector3 size;
+
+		public HitboxDefinition.Type type;
+	}
+
 	public Transform bone;
 
 	public HitboxDefinition.Type type;
@@ -21190,6 +22391,22 @@ public class HitboxShape
 		//IL_0006: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0007: Unknown result type (might be due to invalid IL or missing references)
 		return ((Matrix4x4)(ref inverseTransform)).MultiplyVector(pt);
+	}
+
+	public JobStruct GetJobStruct()
+	{
+		//IL_000b: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0010: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0018: Unknown result type (might be due to invalid IL or missing references)
+		//IL_001d: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0025: Unknown result type (might be due to invalid IL or missing references)
+		//IL_002a: Unknown result type (might be due to invalid IL or missing references)
+		JobStruct result = default(JobStruct);
+		result.transform = transform;
+		result.inverseTransform = inverseTransform;
+		result.size = Size;
+		result.type = type;
+		return result;
 	}
 
 	public bool Trace(Ray ray, out RaycastHit hit, float forgivness = 0f, float maxDistance = float.PositiveInfinity)
@@ -21273,6 +22490,22 @@ public class HitboxShape
 
 using UnityEngine;
 
+public struct JobStruct
+{
+	public Matrix4x4 transform;
+
+	public Matrix4x4 inverseTransform;
+
+	public Vector3 size;
+
+	public HitboxDefinition.Type type;
+}
+
+
+using Development.Attributes;
+using UnityEngine;
+
+[ResetStaticFields]
 public class Buttons
 {
 	public class ConButton : IConsoleButton
@@ -21338,6 +22571,14 @@ public class Buttons
 					_timePressed = TimeSince.op_Implicit(0f);
 				}
 			}
+		}
+
+		public void Reset()
+		{
+			//IL_0006: Unknown result type (might be due to invalid IL or missing references)
+			_timePressed = default(TimeSince);
+			IsDown = false;
+			frame = 0;
 		}
 
 		public void Call(Arg arg)
@@ -21412,6 +22653,14 @@ public class ConButton : IConsoleButton
 				_timePressed = TimeSince.op_Implicit(0f);
 			}
 		}
+	}
+
+	public void Reset()
+	{
+		//IL_0006: Unknown result type (might be due to invalid IL or missing references)
+		_timePressed = default(TimeSince);
+		IsDown = false;
+		frame = 0;
 	}
 
 	public void Call(Arg arg)
@@ -22867,26 +24116,79 @@ public class DrawSkeleton : MonoBehaviour
 
 using System;
 using System.Collections.Generic;
+using Rust.UI.MainMenu;
+using UnityEngine;
 
 public class FakeSteamItemStub : IPlayerItemDefinition, IEquatable<IPlayerItemDefinition>
 {
-	private SteamInventoryItem _source;
+	private readonly SteamInventoryItem _steamItemSource;
 
-	public int DefinitionId => _source.id;
+	private readonly IPlayerItemDefinition _itemSource;
 
-	public string Name => _source.displayName.translated;
+	public readonly ItemStoreTakeover TakeoverSource;
 
-	public string Description => _source.displayDescription.translated;
+	private string tags;
 
-	public string Type => "Type";
+	public IPlayerItemDefinition Source => _itemSource;
+
+	public int DefinitionId => _steamItemSource.id;
+
+	public string Name
+	{
+		get
+		{
+			if (!TakeoverSource.IsValid())
+			{
+				return _steamItemSource.displayName.translated;
+			}
+			return TakeoverSource.NameOverride.english;
+		}
+	}
+
+	public string Description => string.Empty;
+
+	public string Type
+	{
+		get
+		{
+			IPlayerItemDefinition itemSource = _itemSource;
+			if (itemSource == null)
+			{
+				return null;
+			}
+			return itemSource.Type;
+		}
+	}
 
 	public string IconUrl => string.Empty;
 
 	public int LocalPrice => 0;
 
-	public string LocalPriceFormatted => "$0.00";
+	public string LocalPriceFormatted
+	{
+		get
+		{
+			IPlayerItemDefinition itemSource = _itemSource;
+			if (itemSource == null)
+			{
+				return null;
+			}
+			return itemSource.LocalPriceFormatted;
+		}
+	}
 
-	public string PriceCategory => "PriceCategory";
+	public string PriceCategory
+	{
+		get
+		{
+			IPlayerItemDefinition itemSource = _itemSource;
+			if (itemSource == null)
+			{
+				return null;
+			}
+			return itemSource.PriceCategory;
+		}
+	}
 
 	public bool IsGenerator => false;
 
@@ -22894,19 +24196,19 @@ public class FakeSteamItemStub : IPlayerItemDefinition, IEquatable<IPlayerItemDe
 
 	public bool IsMarketable => false;
 
-	public string StoreTags => "StoreTags";
+	public string StoreTags => tags;
 
 	public DateTime Created { get; }
 
 	public DateTime Modified { get; }
 
-	public string ItemShortName => _source.itemname;
+	public string ItemShortName => _steamItemSource.itemname;
 
 	public ulong WorkshopId
 	{
 		get
 		{
-			if (!(_source is ItemSkin itemSkin))
+			if (!(_steamItemSource is ItemSkin itemSkin))
 			{
 				return 0uL;
 			}
@@ -22916,9 +24218,28 @@ public class FakeSteamItemStub : IPlayerItemDefinition, IEquatable<IPlayerItemDe
 
 	public ulong WorkshopDownload { get; }
 
-	public FakeSteamItemStub(SteamInventoryItem itemBacking)
+	public FakeSteamItemStub(ItemStoreTakeover backing, IPlayerItemDefinition itemDef)
 	{
-		_source = itemBacking;
+		if ((Object)(object)backing.Item != (Object)null)
+		{
+			TakeoverSource = backing;
+			_steamItemSource = backing.Item;
+			_itemSource = itemDef;
+		}
+	}
+
+	public FakeSteamItemStub(SteamInventoryItem steamInventoryItemSource)
+	{
+		_steamItemSource = steamInventoryItemSource;
+	}
+
+	public FakeSteamItemStub(SteamDLCItem dlcItemBacking)
+	{
+		SteamInventoryItem steamInventoryItem = ScriptableObject.CreateInstance<SteamInventoryItem>();
+		steamInventoryItem.id = dlcItemBacking.dlcAppID;
+		steamInventoryItem.displayName = dlcItemBacking.dlcName;
+		tags = "DLC";
+		_steamItemSource = steamInventoryItem;
 	}
 
 	public bool Equals(IPlayerItemDefinition other)
@@ -23025,6 +24346,7 @@ public class ItemButtonTools : MonoBehaviour, IBeginDragHandler, IEventSystemHan
 
 
 using System.Linq;
+using Facepunch.Extend;
 using Rust;
 using Rust.UI;
 using TMPro;
@@ -23036,7 +24358,9 @@ public class ItemListTools : MonoBehaviour
 {
 	public GameObject categoryButton;
 
-	public GameObject itemButton;
+	public GameObject itemButtonPrefab;
+
+	public Transform itemButtonParent;
 
 	public RustInput searchInputText;
 
@@ -23128,19 +24452,11 @@ public class ItemListTools : MonoBehaviour
 
 	public void FilterItems(string searchText)
 	{
-		if ((Object)(object)itemButton == (Object)null)
+		if ((Object)(object)itemButtonPrefab == (Object)null)
 		{
 			return;
 		}
-		for (int i = 0; i < itemButton.transform.parent.childCount; i++)
-		{
-			Transform child = itemButton.transform.parent.GetChild(i);
-			if (!((Object)(object)child == (Object)(object)itemButton.transform))
-			{
-				GameManager.Destroy(((Component)child).gameObject);
-			}
-		}
-		itemButton.SetActive(true);
+		TransformEx.DestroyAllChildren(itemButtonParent, false);
 		bool flag = !string.IsNullOrEmpty(searchText);
 		string search = (flag ? searchText.ToLower() : null);
 		IOrderedEnumerable<ItemDefinition> obj = (flag ? allItems : currentItems);
@@ -23149,13 +24465,12 @@ public class ItemListTools : MonoBehaviour
 		{
 			if (!item.Hidden() && (!flag || ItemSearchUtils.IsValidSearchResult(search, item, checkItemIsValid: false)))
 			{
-				GameObject obj2 = Object.Instantiate<GameObject>(itemButton);
-				obj2.transform.SetParent(itemButton.transform.parent, false);
+				GameObject obj2 = Object.Instantiate<GameObject>(itemButtonPrefab, itemButtonParent);
 				((TMP_Text)obj2.GetComponentInChildren<TextMeshProUGUI>()).text = item.displayName.translated;
 				obj2.GetComponentInChildren<ItemButtonTools>().itemDef = item;
 				obj2.GetComponentInChildren<ItemButtonTools>().MainScroll = MainScrollRect;
 				obj2.GetComponentInChildren<ItemButtonTools>().image.sprite = item.iconSprite;
-				((Behaviour)obj2.GetComponentInChildren<ItemButtonTools>().backgroundImage).enabled = (Object)(object)item != (Object)null && !item.IsAllowedInEra((EraRestriction)0);
+				((Behaviour)obj2.GetComponentInChildren<ItemButtonTools>().backgroundImage).enabled = (Object)(object)item != (Object)null && !item.IsAllowed((EraRestriction)0);
 				num++;
 				if (num >= 160)
 				{
@@ -23163,7 +24478,6 @@ public class ItemListTools : MonoBehaviour
 				}
 			}
 		}
-		itemButton.SetActive(false);
 	}
 }
 
@@ -26692,8 +28006,8 @@ public class TransformLineRenderer : MonoBehaviour, IClientComponent
 {
 	internal struct LineRendererUpdateJob : IJobParallelForTransform
 	{
-		[NativeMatchesParallelForLength]
 		[WriteOnly]
+		[NativeMatchesParallelForLength]
 		public NativeArray<Vector3> ResultWorldPositions;
 
 		public void Execute(int index, [ReadOnly] TransformAccess transform)
@@ -26717,8 +28031,8 @@ using UnityEngine.Jobs;
 
 internal struct LineRendererUpdateJob : IJobParallelForTransform
 {
-	[NativeMatchesParallelForLength]
 	[WriteOnly]
+	[NativeMatchesParallelForLength]
 	public NativeArray<Vector3> ResultWorldPositions;
 
 	public void Execute(int index, [ReadOnly] TransformAccess transform)
@@ -27230,20 +28544,16 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
-using ConVar;
+using System.Threading;
 using UnityEngine;
 
 public class FileSystem_Warmup : MonoBehaviour
 {
-	public static bool ranInBackground = false;
-
-	public static Coroutine warmupTask;
-
 	private static List<(string, TimeSpan)> warmupTimes = new List<(string, TimeSpan)>();
 
 	private static bool run = true;
 
-	public static string[] ExcludeFilter = new string[13]
+	private static string[] ExcludeFilter = new string[13]
 	{
 		"/bundled/prefabs/autospawn/monument", "/bundled/prefabs/autospawn/mountain", "/bundled/prefabs/autospawn/canyon", "/bundled/prefabs/autospawn/decor", "/bundled/prefabs/autospawn/tunnel", "/bundled/prefabs/remapped", "/bundled/prefabs/navmesh", "/content/ui/", "/prefabs/ui/", "/prefabs/world/",
 		"/prefabs/system/", "/standard assets/", "/third party/"
@@ -27258,80 +28568,79 @@ public class FileSystem_Warmup : MonoBehaviour
 
 	public static void Run()
 	{
-		if (!Global.skipAssetWarmup_crashes && run)
+		if (!run)
 		{
-			string[] assetList = GetAssetList(null);
-			for (int i = 0; i < assetList.Length; i++)
-			{
-				PrefabWarmup(assetList[i]);
-			}
-			run = false;
+			return;
 		}
+		FileSystemBackend backend = FileSystem.Backend;
+		AssetBundleBackend val = (AssetBundleBackend)(object)((backend is AssetBundleBackend) ? backend : null);
+		if (val != null && val.GetAssetSceneProgress() < 1f)
+		{
+			Debug.LogError((object)"Cannot run synchronous asset warmup until all asset scenes are finished loading");
+			return;
+		}
+		List<string> assetList = GetAssetList();
+		for (int i = 0; i < assetList.Count; i++)
+		{
+			PrefabWarmup(assetList[i]);
+		}
+		run = false;
 	}
 
-	public static IEnumerator Run(string[] assetList, Action<string> statusFunction = null, string format = null, int priority = 0)
+	public static IEnumerator Run(Action<string> statusFunction, string format = null, CancellationToken ct = default(CancellationToken))
 	{
-		if (Global.warmupConcurrency <= 1)
-		{
-			return RunImpl(assetList, statusFunction, format);
-		}
-		return RunAsyncImpl(assetList, statusFunction, format, priority);
-	}
-
-	private static IEnumerator RunAsyncImpl(string[] assetList, Action<string> statusFunction, string format, int priority)
-	{
-		if (Global.skipAssetWarmup_crashes || !run)
+		if (!run)
 		{
 			yield break;
 		}
-		Stopwatch statusSw = Stopwatch.StartNew();
-		Timing timer = new Timing("asset_warmup_async");
-		Stopwatch sw = Stopwatch.StartNew();
-		AssetPreloadResult preload = FileSystem.PreloadAssets((IEnumerable<string>)assetList, Global.warmupConcurrency, priority);
-		int warmupIndex = 0;
-		while (((CustomYieldInstruction)preload).MoveNext() || warmupIndex < preload.TotalCount)
+		FileSystemBackend backend = FileSystem.Backend;
+		AssetBundleBackend assetBundleBackend = (AssetBundleBackend)(object)((backend is AssetBundleBackend) ? backend : null);
+		if (assetBundleBackend != null)
 		{
-			float num = CalculateFrameBudget();
-			if (num > 0f)
+			float lastProgress = 0f;
+			while (!ct.IsCancellationRequested)
 			{
-				while (warmupIndex < preload.Results.Count && sw.Elapsed.TotalSeconds < (double)num)
+				float assetSceneProgress = assetBundleBackend.GetAssetSceneProgress();
+				if (assetSceneProgress >= 1f)
 				{
-					PrefabWarmup(preload.Results[warmupIndex++].Item1);
+					break;
 				}
+				if (!Mathf.Approximately(assetSceneProgress, lastProgress))
+				{
+					lastProgress = assetSceneProgress;
+					statusFunction?.Invoke($"Loading Game Prefabs {assetSceneProgress * 100f:0.0}%");
+				}
+				yield return null;
 			}
-			if (warmupIndex == 0 || warmupIndex == preload.TotalCount || statusSw.Elapsed.TotalSeconds > 1.0)
-			{
-				statusFunction?.Invoke(string.Format(format ?? "{0}/{1}", warmupIndex, preload.TotalCount));
-				statusSw.Restart();
-			}
-			yield return CoroutineEx.waitForEndOfFrame;
-			sw.Restart();
 		}
+		Timing timer = new Timing("asset_warmup");
+		List<string> assetList = GetAssetList();
+		yield return RunForAssets(assetList, statusFunction, format, ct);
 		timer.End();
 		run = false;
 	}
 
-	private static IEnumerator RunImpl(string[] assetList, Action<string> statusFunction = null, string format = null)
+	public static IEnumerator RunForAssets(List<string> assetList, Action<string> statusFunction, string format = null, CancellationToken ct = default(CancellationToken))
 	{
-		if (Global.skipAssetWarmup_crashes || !run)
+		if (assetList.Count == 0)
 		{
 			yield break;
 		}
-		Timing timer = new Timing("asset_warmup");
 		Stopwatch sw = Stopwatch.StartNew();
-		for (int i = 0; i < assetList.Length; i++)
+		for (int i = 0; i < assetList.Count; i++)
 		{
-			if (sw.Elapsed.TotalSeconds > (double)CalculateFrameBudget() || i == 0 || i == assetList.Length - 1)
+			if (ct.IsCancellationRequested)
 			{
-				statusFunction?.Invoke(string.Format((format != null) ? format : "{0}/{1}", i + 1, assetList.Length));
+				break;
+			}
+			if (sw.Elapsed.TotalSeconds > (double)CalculateFrameBudget() || i == 0 || i == assetList.Count - 1)
+			{
+				statusFunction?.Invoke(string.Format((format != null) ? format : "{0}/{1}", i + 1, assetList.Count));
 				yield return CoroutineEx.waitForEndOfFrame;
-				sw.Reset();
-				sw.Start();
+				sw.Restart();
 			}
 			PrefabWarmup(assetList[i]);
 		}
-		timer.End();
-		run = false;
 	}
 
 	private static float CalculateFrameBudget()
@@ -27343,7 +28652,7 @@ public class FileSystem_Warmup : MonoBehaviour
 	{
 		for (int i = 0; i < ExcludeFilter.Length; i++)
 		{
-			if (StringEx.Contains(path, ExcludeFilter[i], CompareOptions.IgnoreCase))
+			if (StringEx.Contains(path, ExcludeFilter[i], CompareOptions.OrdinalIgnoreCase))
 			{
 				return true;
 			}
@@ -27351,18 +28660,17 @@ public class FileSystem_Warmup : MonoBehaviour
 		return false;
 	}
 
-	public static string[] GetAssetList(bool? poolFilter = null)
+	private static List<string> GetAssetList()
 	{
-		if (!poolFilter.HasValue)
+		FileSystemBackend backend = FileSystem.Backend;
+		AssetBundleBackend val = (AssetBundleBackend)(object)((backend is AssetBundleBackend) ? backend : null);
+		if (val == null)
 		{
-			return (from x in GameManifest.Current.prefabProperties
-				select x.name into x
-				where !ShouldIgnore(x)
-				select x).ToArray();
+			return new List<string>();
 		}
-		return (from x in GameManifest.Current.prefabProperties
-			where !ShouldIgnore(x.name) && x.pool == poolFilter
-			select x.name).Distinct<string>(StringComparer.InvariantCultureIgnoreCase).ToArray();
+		return (from t in val.GetAssetScenePrefabs(AssetSceneManifest.Current.AutoLoadScenes)
+			where !ShouldIgnore(t.Path)
+			select t.Path).ToList();
 	}
 
 	private static void PrefabWarmup(string path)
@@ -27372,2551 +28680,6 @@ public class FileSystem_Warmup : MonoBehaviour
 		warmupTimer.Stop();
 		warmupTimes.Add(ValueTuple.Create(path, warmupTimer.Elapsed));
 	}
-}
-
-
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Runtime.CompilerServices;
-using ConVar;
-using Facepunch.Extend;
-using Facepunch.Utility;
-using Ionic.Zlib;
-using UnityEngine;
-
-public static class ProfileExporter
-{
-	private struct MainThreadInfo
-	{
-		public List<uint> SyncIndices;
-
-		public List<uint> FrameStarts;
-
-		public uint Frames;
-	}
-
-	public static class JSON
-	{
-		private struct ThreadMetadata
-		{
-			internal int ThreadId;
-
-			internal int AllocationThreadId;
-
-			internal void Emit(StringStream builder)
-			{
-				bool isMainThread = ThreadId == ServerProfiler.GetMainThreadId();
-				EmitThreadName(isMainThread, isAllocThread: false, ThreadId, ThreadId, builder);
-				builder.Append(',');
-				EmitThreadName(isMainThread, isAllocThread: true, AllocationThreadId, ThreadId, builder);
-			}
-
-			private static void EmitThreadName(bool isMainThread, bool isAllocThread, int id, int origId, StringStream builder)
-			{
-				builder.Append("{\"name\":\"thread_name\",\"ph\":\"M\",\"pid\":0,\"tid\":");
-				builder.Append(id);
-				builder.Append(",\"args\":{\"name\":\"");
-				if (isMainThread)
-				{
-					builder.Append("Main Thread");
-				}
-				else
-				{
-					builder.Append("Thread");
-				}
-				if (isAllocThread)
-				{
-					if (!isMainThread)
-					{
-						builder.Append(' ');
-						builder.Append(origId);
-					}
-					builder.Append(" Allocations");
-				}
-				builder.Append("\"}}");
-			}
-		}
-
-		public class StringStream : MemoryStream
-		{
-			private GZipStream outputStream;
-
-			public StringStream(int capacity, GZipStream outputStream)
-				: base(capacity)
-			{
-				this.outputStream = outputStream;
-			}
-
-			public override void Write(byte[] buffer, int offset, int count)
-			{
-				if (base.Position + count < base.Capacity)
-				{
-					base.Write(buffer, offset, count);
-					return;
-				}
-				int num = base.Capacity - (int)base.Position;
-				if (num > 0)
-				{
-					base.Write(buffer, offset, num);
-				}
-				Flush();
-				if (count - num > 0)
-				{
-					base.Write(buffer, offset + num, count - num);
-				}
-			}
-
-			public override void Write(ReadOnlySpan<byte> source)
-			{
-				throw new NotSupportedException("Write(ReadOnlySpan<byte>) not implemented!");
-			}
-
-			public override void WriteByte(byte value)
-			{
-				if (base.Position + 1 < base.Capacity)
-				{
-					base.WriteByte(value);
-					return;
-				}
-				Flush();
-				base.WriteByte(value);
-			}
-
-			public void Append(char c)
-			{
-				WriteByte((byte)c);
-			}
-
-			public void Append(string text)
-			{
-				foreach (char c in text)
-				{
-					Append(c);
-				}
-			}
-
-			public void Append(int num)
-			{
-				Span<char> destination = stackalloc char[32];
-				num.TryFormat(destination, out var charsWritten);
-				Append(destination.Slice(0, charsWritten));
-			}
-
-			public void Append(long num)
-			{
-				Span<char> destination = stackalloc char[32];
-				num.TryFormat(destination, out var charsWritten);
-				Append(destination.Slice(0, charsWritten));
-			}
-
-			public void Append(ulong num)
-			{
-				Span<char> destination = stackalloc char[32];
-				num.TryFormat(destination, out var charsWritten);
-				Append(destination.Slice(0, charsWritten));
-			}
-
-			public void Append(ReadOnlySpan<char> chars)
-			{
-				ReadOnlySpan<char> readOnlySpan = chars;
-				for (int i = 0; i < readOnlySpan.Length; i++)
-				{
-					char c = readOnlySpan[i];
-					Append(c);
-				}
-			}
-
-			public override void Flush()
-			{
-				long position = Position;
-				if (position > 0)
-				{
-					byte[] buffer = GetBuffer();
-					((Stream)(object)outputStream).Write(buffer, 0, (int)position);
-					Position = 0L;
-				}
-			}
-		}
-
-		public static bool Export(string filename, IList<ServerProfiler.Profile> profiles, ServerProfiler.MemoryState memState)
-		{
-			//IL_0068: Unknown result type (might be due to invalid IL or missing references)
-			//IL_006f: Expected O, but got Unknown
-			try
-			{
-				Debug.Log((object)"Starting JSON snapshot generation...");
-				Preprocess(profiles, out var mainInfo, out var _);
-				string text = Path.Join((ReadOnlySpan<char>)Server.rootFolder, (ReadOnlySpan<char>)"profiler");
-				if (!Directory.Exists(text))
-				{
-					Directory.CreateDirectory(text);
-				}
-				using (FileStream fileStream = new FileStream(Path.Join((ReadOnlySpan<char>)text, (ReadOnlySpan<char>)(filename + ".json.gz")), FileMode.Create, FileAccess.Write, FileShare.None, 20480))
-				{
-					GZipStream val = new GZipStream((Stream)fileStream, (CompressionMode)0);
-					try
-					{
-						val.FlushMode = (FlushType)2;
-						using StringStream stringStream = new StringStream(16384, val);
-						stringStream.Append('[');
-						int num = 0;
-						foreach (ServerProfiler.Profile profile2 in profiles)
-						{
-							num = Math.Max(num, profile2.ThreadId);
-						}
-						List<ThreadMetadata> list = new List<ThreadMetadata>();
-						for (int i = 0; i < profiles.Count; i++)
-						{
-							ServerProfiler.Profile profile = profiles[i];
-							ThreadMetadata item = default(ThreadMetadata);
-							item.ThreadId = profile.ThreadId;
-							num = (item.AllocationThreadId = num + 1);
-							if (i != 0)
-							{
-								stringStream.Append(',');
-							}
-							item.Emit(stringStream);
-							list.Add(item);
-						}
-						long firstMarkTimestamp = 0L;
-						for (int j = 0; j < profiles.Count; j++)
-						{
-							ServerProfiler.Profile mainProfile = profiles[j];
-							if (mainProfile.ThreadId == ServerProfiler.GetMainThreadId())
-							{
-								if (ProcessMainProfile(in mainProfile, in mainInfo, list[j], stringStream, out firstMarkTimestamp))
-								{
-									break;
-								}
-								return false;
-							}
-						}
-						for (int k = 0; k < profiles.Count; k++)
-						{
-							ServerProfiler.Profile workerProfile = profiles[k];
-							if (workerProfile.ThreadId != ServerProfiler.GetMainThreadId() && !ProcessWorkerProfile(in workerProfile, list[k], firstMarkTimestamp, stringStream))
-							{
-								return false;
-							}
-						}
-						ProcessMemoryState(in memState, firstMarkTimestamp, stringStream);
-						stringStream.Append("]");
-						stringStream.Flush();
-						Debug.Log((object)"Generation done, flushing...");
-					}
-					finally
-					{
-						((IDisposable)val)?.Dispose();
-					}
-				}
-				Debug.Log((object)"Snapshot json export done!");
-				return true;
-			}
-			catch (Exception ex)
-			{
-				Debug.LogException(ex);
-				return false;
-			}
-		}
-
-		private unsafe static bool ProcessMainProfile(in ServerProfiler.Profile mainProfile, in MainThreadInfo info, in ThreadMetadata metadata, StringStream builder, out long firstMarkTimestamp)
-		{
-			if (info.FrameStarts == null || info.Frames == 0)
-			{
-				Debug.LogError((object)"ServerProfiler: Didn't find any main frame info!");
-				firstMarkTimestamp = 0L;
-				return false;
-			}
-			int num = 0;
-			byte* data = mainProfile.Data;
-			uint num2 = info.FrameStarts[0];
-			firstMarkTimestamp = Unsafe.ReadUnaligned<ServerProfiler.Mark>(data + num2).Timestamp;
-			long num3 = 0L;
-			for (int i = 0; i < info.Frames; i++)
-			{
-				uint num4 = info.FrameStarts[i];
-				ServerProfiler.Mark mark = Unsafe.ReadUnaligned<ServerProfiler.Mark>(data + num4);
-				uint num5 = mainProfile.WriteEnd;
-				if (i < info.Frames - 1)
-				{
-					num5 = info.FrameStarts[i + 1];
-				}
-				ServerProfiler.Mark mark2 = default(ServerProfiler.Mark);
-				mark2.Event = ServerProfiler.Mark.Type.Enter;
-				mark2.Timestamp = mark.Timestamp;
-				AddMark(mark2, $"UnityFrame{i}", mainProfile.ThreadId, firstMarkTimestamp, builder);
-				uint totalMem = 0u;
-				long offset = ServerProfiler.TimestampToMicros(mark.Timestamp - firstMarkTimestamp);
-				EmitCounter("Main Thread", offset, "Total(B)", totalMem, builder);
-				uint readInd = num4;
-				while (readInd < num5)
-				{
-					ServerProfiler.Mark mark3 = Unsafe.ReadUnaligned<ServerProfiler.Mark>(data + readInd);
-					num3 = mark3.Timestamp;
-					num += AdjustCallstackDepth(in mark3);
-					if (num < 0)
-					{
-						Debug.LogError((object)$"ServerProfiler: Unexpected callstack depth: {num}, offset: {readInd}, frame: {i}");
-						return false;
-					}
-					AddMark(in mainProfile, in metadata, readInd, ref totalMem, firstMarkTimestamp, builder);
-					if (!AdvanceReadInd(in mark3, data, ref readInd))
-					{
-						return false;
-					}
-				}
-				long timestamp = ((i < info.Frames - 1) ? Unsafe.ReadUnaligned<ServerProfiler.Mark>(data + num5).Timestamp : num3);
-				mark2 = default(ServerProfiler.Mark);
-				mark2.Event = ServerProfiler.Mark.Type.Exit;
-				mark2.Timestamp = timestamp;
-				AddMark(mark2, null, mainProfile.ThreadId, firstMarkTimestamp, builder);
-			}
-			while (num > 0)
-			{
-				ServerProfiler.Mark mark4 = default(ServerProfiler.Mark);
-				mark4.Event = ServerProfiler.Mark.Type.Exit;
-				mark4.Timestamp = num3;
-				AddMark(mark4, null, mainProfile.ThreadId, firstMarkTimestamp, builder);
-				num--;
-			}
-			return true;
-		}
-
-		private unsafe static bool ProcessWorkerProfile(in ServerProfiler.Profile workerProfile, in ThreadMetadata metadata, long firstMarkTimestamp, StringStream builder)
-		{
-			uint readInd = 0u;
-			int num = 0;
-			while (readInd < workerProfile.WriteEnd)
-			{
-				ServerProfiler.Mark mark = Unsafe.ReadUnaligned<ServerProfiler.Mark>(workerProfile.Data + readInd);
-				if (mark.Timestamp >= firstMarkTimestamp)
-				{
-					break;
-				}
-				if (mark.Event == ServerProfiler.Mark.Type.Sync)
-				{
-					Debug.LogError((object)"Unexpected mark in worker stream, aborting!");
-					return false;
-				}
-				num += AdjustCallstackDepth(in mark);
-				if (!AdvanceReadInd(in mark, workerProfile.Data, ref readInd))
-				{
-					return false;
-				}
-			}
-			if (readInd >= workerProfile.WriteEnd)
-			{
-				return true;
-			}
-			bool flag = false;
-			uint readInd2 = readInd;
-			while (readInd2 < workerProfile.WriteEnd)
-			{
-				ServerProfiler.Mark mark2 = Unsafe.ReadUnaligned<ServerProfiler.Mark>(workerProfile.Data + readInd2);
-				if (mark2.Event == ServerProfiler.Mark.Type.Sync)
-				{
-					Debug.LogError((object)"Unexpected mark in worker stream, aborting!");
-					return false;
-				}
-				if (mark2.Event != ServerProfiler.Mark.Type.Alloc)
-				{
-					flag = true;
-					break;
-				}
-				if (!AdvanceReadInd(in mark2, workerProfile.Data, ref readInd2))
-				{
-					return false;
-				}
-			}
-			if (!flag)
-			{
-				return true;
-			}
-			if (!FindStartingDepth(in workerProfile, 0u, workerProfile.WriteEnd, out var minDepth))
-			{
-				return false;
-			}
-			minDepth = num - minDepth;
-			for (int num2 = minDepth; num2 > 0; num2--)
-			{
-				ServerProfiler.Mark mark3 = default(ServerProfiler.Mark);
-				mark3.Event = ServerProfiler.Mark.Type.Enter;
-				mark3.Timestamp = firstMarkTimestamp;
-				AddMark(mark3, "Unknown", workerProfile.ThreadId, firstMarkTimestamp, builder);
-			}
-			uint totalMem = 0u;
-			long timestamp = 0L;
-			uint readInd3 = readInd;
-			while (readInd3 < workerProfile.WriteEnd)
-			{
-				ServerProfiler.Mark mark4 = Unsafe.ReadUnaligned<ServerProfiler.Mark>(workerProfile.Data + readInd3);
-				timestamp = mark4.Timestamp;
-				minDepth += AdjustCallstackDepth(in mark4);
-				if (minDepth < 0)
-				{
-					Debug.LogError((object)$"ServerProfiler: Unexpected callstack depth: {minDepth}, offset: {readInd3}, thread: {workerProfile.ThreadId}");
-					return false;
-				}
-				if (mark4.Event == ServerProfiler.Mark.Type.Alloc || (mark4.Event == ServerProfiler.Mark.Type.AllocWithStack && totalMem == 0))
-				{
-					EmitCounter("Thread", metadata.ThreadId, 0L, "Total(B)", 0uL, builder);
-				}
-				AddMark(in workerProfile, in metadata, readInd3, ref totalMem, firstMarkTimestamp, builder);
-				if (!AdvanceReadInd(in mark4, workerProfile.Data, ref readInd3))
-				{
-					return false;
-				}
-			}
-			while (minDepth > 0)
-			{
-				ServerProfiler.Mark mark5 = default(ServerProfiler.Mark);
-				mark5.Event = ServerProfiler.Mark.Type.Exit;
-				mark5.Timestamp = timestamp;
-				AddMark(mark5, null, workerProfile.ThreadId, firstMarkTimestamp, builder);
-				minDepth--;
-			}
-			return true;
-		}
-
-		private unsafe static void ProcessMemoryState(in ServerProfiler.MemoryState memState, long firstMarkTimestamp, StringStream builder)
-		{
-			ulong num = 0uL;
-			ulong num2 = 0uL;
-			for (uint num3 = 0u; num3 < memState.Created; num3++)
-			{
-				ServerProfiler.MemoryReading memoryReading = memState.Readings[num3];
-				long timestamp = memoryReading.Timestamp;
-				if (timestamp >= firstMarkTimestamp)
-				{
-					ulong num4 = memoryReading.WorkingSet / 1024;
-					if (num4 != num)
-					{
-						long offset = ((num == 0L) ? 0 : ServerProfiler.TimestampToMicros(timestamp - firstMarkTimestamp));
-						EmitCounter("ws", offset, "WorkingSet(KB)", num4, builder);
-						num = num4;
-					}
-					ulong num5 = memoryReading.VirtualSet / 1024;
-					if (num5 != num2)
-					{
-						long offset2 = ((num2 == 0L) ? 0 : ServerProfiler.TimestampToMicros(timestamp - firstMarkTimestamp));
-						EmitCounter("vs", offset2, "VirtualSet(KB)", num5, builder);
-						num2 = num5;
-					}
-				}
-			}
-		}
-
-		private unsafe static void AddMark(in ServerProfiler.Profile threadProfile, in ThreadMetadata metadata, uint markInd, ref uint totalMem, long startTimestamp, StringStream builder)
-		{
-			byte* ptr = threadProfile.Data + markInd;
-			ServerProfiler.Mark mark = Unsafe.ReadUnaligned<ServerProfiler.Mark>(ptr);
-			ptr += sizeof(ServerProfiler.Mark);
-			switch (mark.Event)
-			{
-			case ServerProfiler.Mark.Type.Enter:
-				builder.Append(",{\"name\":\"");
-				ServerProfiler.AppendNameTo(*(ServerProfiler.Native.MonoMethod**)ptr, builder);
-				builder.Append("\",\"cat\":\"P\",\"ph\":\"B\",\"ts\":");
-				builder.Append(ServerProfiler.TimestampToMicros(mark.Timestamp - startTimestamp));
-				builder.Append(",\"pid\":0,\"tid\":");
-				builder.Append(threadProfile.ThreadId);
-				builder.Append("}");
-				break;
-			case ServerProfiler.Mark.Type.Exit:
-			case ServerProfiler.Mark.Type.Exception:
-			case ServerProfiler.Mark.Type.GCEnd:
-				builder.Append(",{\"ph\":\"E\",\"ts\":");
-				builder.Append(ServerProfiler.TimestampToMicros(mark.Timestamp - startTimestamp));
-				builder.Append(",\"pid\":0,\"tid\":");
-				builder.Append(threadProfile.ThreadId);
-				builder.Append("}");
-				break;
-			case ServerProfiler.Mark.Type.Alloc:
-			{
-				ServerProfiler.Alloc alloc2 = Unsafe.ReadUnaligned<ServerProfiler.Alloc>(ptr);
-				long num2 = ServerProfiler.TimestampToMicros(mark.Timestamp - startTimestamp);
-				builder.Append(",{\"name\":\"");
-				builder.Append("Alloc ");
-				builder.Append(alloc2.AlignedSize);
-				builder.Append("b\",\"ph\":\"i\",\"ts\":");
-				builder.Append(num2);
-				builder.Append(",\"pid\":0,\"tid\":");
-				builder.Append(threadProfile.ThreadId);
-				builder.Append(",\"s\":\"t\",\"cat\":\"A\",\"args\":{\"size\":");
-				builder.Append(alloc2.AlignedSize);
-				builder.Append(",\"type\":\"");
-				ServerProfiler.AppendNameTo(alloc2, builder);
-				builder.Append("\",\"lastMethod\":\"");
-				if (alloc2.LastMethod != null)
-				{
-					ServerProfiler.AppendNameTo(alloc2.LastMethod, builder);
-				}
-				else
-				{
-					builder.Append("<mono-native-runtime>");
-				}
-				builder.Append("\"}}");
-				builder.Append(",{\"name\":\"");
-				builder.Append("Alloc ");
-				builder.Append(alloc2.AlignedSize);
-				builder.Append("b\",\"ph\":\"i\",\"ts\":");
-				builder.Append(num2);
-				builder.Append(",\"pid\":0,\"tid\":");
-				builder.Append(metadata.AllocationThreadId);
-				builder.Append(",\"s\":\"t\",\"cat\":\"A\",\"args\":{\"size\":");
-				builder.Append(alloc2.AlignedSize);
-				builder.Append(",\"type\":\"");
-				ServerProfiler.AppendNameTo(alloc2, builder);
-				builder.Append("\",\"lastMethod\":\"");
-				if (alloc2.LastMethod != null)
-				{
-					ServerProfiler.AppendNameTo(alloc2.LastMethod, builder);
-				}
-				else
-				{
-					builder.Append("<mono-native-runtime>");
-				}
-				builder.Append("\"}}");
-				totalMem += alloc2.AlignedSize;
-				if (metadata.ThreadId == ServerProfiler.GetMainThreadId())
-				{
-					EmitCounter("Main Thread", num2, "Total(B)", totalMem, builder);
-				}
-				else
-				{
-					EmitCounter("Thread", metadata.ThreadId, num2, "Total(B)", totalMem, builder);
-				}
-				break;
-			}
-			case ServerProfiler.Mark.Type.AllocWithStack:
-			{
-				ServerProfiler.Alloc alloc = Unsafe.ReadUnaligned<ServerProfiler.Alloc>(ptr);
-				ptr += sizeof(ServerProfiler.Alloc);
-				long num = ServerProfiler.TimestampToMicros(mark.Timestamp - startTimestamp);
-				builder.Append(",{\"name\":\"");
-				builder.Append("Alloc ");
-				builder.Append(alloc.AlignedSize);
-				builder.Append("b\",\"ph\":\"i\",\"ts\":");
-				builder.Append(num);
-				builder.Append(",\"pid\":0,\"tid\":");
-				builder.Append(metadata.ThreadId);
-				builder.Append(",\"s\":\"t\",\"cat\":\"A\",\"args\":{\"size\":");
-				builder.Append(alloc.AlignedSize);
-				builder.Append(",\"type\":\"");
-				ServerProfiler.AppendNameTo(alloc, builder);
-				builder.Append("\",\"lastMethod\":\"");
-				if (alloc.LastMethod != null)
-				{
-					ServerProfiler.AppendNameTo(alloc.LastMethod, builder);
-				}
-				else
-				{
-					builder.Append("<mono-native-runtime>");
-				}
-				builder.Append('"');
-				byte b = *ptr;
-				ptr++;
-				if (b > 0)
-				{
-					builder.Append(",\"callstack\":{");
-					ServerProfiler.Native.MonoMethod** ptr2 = (ServerProfiler.Native.MonoMethod**)ptr;
-					for (byte b2 = 0; b2 < b; b2++)
-					{
-						ServerProfiler.Native.MonoMethod* method = ptr2[(int)b2];
-						builder.Append('"');
-						char c = (char)(b2 + 32);
-						if (c >= '"')
-						{
-							c = (char)(c + 1);
-						}
-						if (c >= '.')
-						{
-							c = (char)(c + 1);
-						}
-						if (c >= '\\')
-						{
-							c = (char)(c + 1);
-						}
-						if (c < '\u007f')
-						{
-							builder.Append(c);
-						}
-						else
-						{
-							builder.Append(b2);
-						}
-						builder.Append("\":\"");
-						ServerProfiler.AppendNameTo(method, builder);
-						builder.Append('"');
-						if (b2 != b - 1)
-						{
-							builder.Append(',');
-						}
-					}
-					builder.Append('}');
-				}
-				builder.Append("}}");
-				totalMem += alloc.AlignedSize;
-				if (metadata.ThreadId == ServerProfiler.GetMainThreadId())
-				{
-					EmitCounter("Main Thread", num, "Total(B)", totalMem, builder);
-				}
-				else
-				{
-					EmitCounter("Thread", metadata.ThreadId, num, "Total(B)", totalMem, builder);
-				}
-				break;
-			}
-			case ServerProfiler.Mark.Type.GCBegin:
-				builder.Append(",{\"name\":\"");
-				builder.Append("GC.Collect");
-				builder.Append("\",\"cat\":\"P\",\"ph\":\"B\",\"ts\":");
-				builder.Append(ServerProfiler.TimestampToMicros(mark.Timestamp - startTimestamp));
-				builder.Append(",\"pid\":0,\"tid\":");
-				builder.Append(threadProfile.ThreadId);
-				builder.Append("}");
-				break;
-			}
-		}
-
-		private static void AddMark(ServerProfiler.Mark mark, string name, int threadId, long startTimestamp, StringStream builder)
-		{
-			switch (mark.Event)
-			{
-			case ServerProfiler.Mark.Type.Enter:
-				builder.Append(",{\"name\":\"");
-				builder.Append(name);
-				builder.Append("\",\"cat\":\"P\",\"ph\":\"B\",\"ts\":");
-				builder.Append(ServerProfiler.TimestampToMicros(mark.Timestamp - startTimestamp));
-				builder.Append(",\"pid\":0,\"tid\":");
-				builder.Append(threadId);
-				builder.Append("}");
-				break;
-			case ServerProfiler.Mark.Type.Exit:
-			case ServerProfiler.Mark.Type.Exception:
-				builder.Append(",{\"ph\":\"E\",\"ts\":");
-				builder.Append(ServerProfiler.TimestampToMicros(mark.Timestamp - startTimestamp));
-				builder.Append(",\"pid\":0,\"tid\":");
-				builder.Append(threadId);
-				builder.Append("}");
-				break;
-			}
-		}
-
-		private static void EmitCounter(string markName, long offset, string counterName, ulong value, StringStream builder)
-		{
-			builder.Append(",{\"name\":\"");
-			builder.Append(markName);
-			builder.Append("\",\"ph\":\"C\",\"ts\":");
-			builder.Append(offset);
-			builder.Append(",\"args\":{\"");
-			builder.Append(counterName);
-			builder.Append("\":");
-			builder.Append(value);
-			builder.Append("}}");
-		}
-
-		private static void EmitCounter(string markName, int threadId, long offset, string counterName, ulong value, StringStream builder)
-		{
-			builder.Append(",{\"name\":\"");
-			builder.Append(markName);
-			builder.Append(" ");
-			builder.Append(threadId);
-			builder.Append("\",\"ph\":\"C\",\"ts\":");
-			builder.Append(offset);
-			builder.Append(",\"args\":{\"");
-			builder.Append(counterName);
-			builder.Append("\":");
-			builder.Append(value);
-			builder.Append("}}");
-		}
-
-		private unsafe static bool FindStartingDepth(in ServerProfiler.Profile threadProfile, uint start, uint end, out int minDepth)
-		{
-			int num = 0;
-			minDepth = 0;
-			uint readInd = start;
-			while (readInd < end)
-			{
-				ServerProfiler.Mark mark = Unsafe.ReadUnaligned<ServerProfiler.Mark>(threadProfile.Data + readInd);
-				num += AdjustCallstackDepth(in mark);
-				if (mark.Event == ServerProfiler.Mark.Type.Exit || mark.Event == ServerProfiler.Mark.Type.Exception)
-				{
-					minDepth = Math.Min(num, minDepth);
-				}
-				if (!AdvanceReadInd(in mark, threadProfile.Data, ref readInd))
-				{
-					return false;
-				}
-			}
-			return true;
-		}
-
-		private static int AdjustCallstackDepth(in ServerProfiler.Mark mark)
-		{
-			switch (mark.Event)
-			{
-			case ServerProfiler.Mark.Type.Enter:
-				return 1;
-			case ServerProfiler.Mark.Type.Exit:
-			case ServerProfiler.Mark.Type.Exception:
-				return -1;
-			default:
-				return 0;
-			}
-		}
-	}
-
-	public static class Binary
-	{
-		private enum Section : byte
-		{
-			Info,
-			Thread,
-			Marks
-		}
-
-		private struct SectionBlock : IDisposable
-		{
-			private MemoryStream stream;
-
-			private long startPos;
-
-			public static SectionBlock New(Section section, MemoryStream stream)
-			{
-				SectionBlock result = default(SectionBlock);
-				result.stream = stream;
-				result.startPos = stream.Position;
-				result.Begin(section);
-				return result;
-			}
-
-			private void Begin(Section section)
-			{
-				Write(4276993775u);
-				Write((byte)section);
-				Write(ulong.MaxValue);
-			}
-
-			private void End()
-			{
-				long num = startPos + 5;
-				long num2 = stream.Position - num - 8;
-				byte[] buffer = stream.GetBuffer();
-				for (byte b = 0; b < 8; b++)
-				{
-					buffer[num + b] = (byte)(num2 >> 56 - b * 8);
-				}
-				Write(3735928559u);
-			}
-
-			public void Write(string text)
-			{
-				Write((ushort)text.Length);
-				for (int i = 0; i < text.Length; i++)
-				{
-					stream.WriteByte((byte)text[i]);
-				}
-			}
-
-			public void Write(ulong value)
-			{
-				for (byte b = 0; b < 8; b++)
-				{
-					stream.WriteByte((byte)(value >> 56 - b * 8));
-				}
-			}
-
-			public void Write(uint value)
-			{
-				for (byte b = 0; b < 4; b++)
-				{
-					stream.WriteByte((byte)(value >> 24 - b * 8));
-				}
-			}
-
-			public void Write(ushort value)
-			{
-				stream.WriteByte((byte)(value >> 8));
-				stream.WriteByte((byte)value);
-			}
-
-			public void Write(byte value)
-			{
-				stream.WriteByte(value);
-			}
-
-			void IDisposable.Dispose()
-			{
-				End();
-			}
-		}
-
-		public unsafe static void Export(string filename, IList<ServerProfiler.Profile> profiles)
-		{
-			Debug.Log((object)"Starting BIN snapshot generation...");
-			MemoryStream memoryStream = new MemoryStream(134217728);
-			using (SectionBlock sectionBlock = SectionBlock.New(Section.Info, memoryStream))
-			{
-				sectionBlock.Write("Nothing");
-			}
-			foreach (ServerProfiler.Profile profile in profiles)
-			{
-				using SectionBlock sectionBlock2 = SectionBlock.New(Section.Thread, memoryStream);
-				sectionBlock2.Write((uint)profile.ThreadId);
-				using SectionBlock sectionBlock3 = SectionBlock.New(Section.Marks, memoryStream);
-				uint readInd = 0u;
-				while (readInd < profile.WriteEnd)
-				{
-					byte* ptr = profile.Data + readInd;
-					ServerProfiler.Mark mark = Unsafe.ReadUnaligned<ServerProfiler.Mark>(ptr);
-					sectionBlock3.Write((byte)mark.Event);
-					sectionBlock3.Write((ulong)mark.Timestamp);
-					switch (mark.Event)
-					{
-					case ServerProfiler.Mark.Type.Enter:
-						ServerProfiler.SerializeNameTo(*(ServerProfiler.Native.MonoMethod**)(ptr + sizeof(ServerProfiler.Mark)), memoryStream);
-						break;
-					case ServerProfiler.Mark.Type.Alloc:
-					{
-						ServerProfiler.Alloc alloc = Unsafe.ReadUnaligned<ServerProfiler.Alloc>(ptr + sizeof(ServerProfiler.Mark));
-						ServerProfiler.SerializeNameTo(alloc, memoryStream);
-						sectionBlock3.Write(alloc.AlignedSize);
-						break;
-					}
-					}
-					AdvanceReadInd(in mark, profile.Data, ref readInd);
-				}
-			}
-			Debug.Log((object)"Generation done, compressing...");
-			byte[] array = new byte[memoryStream.Position];
-			Buffer.BlockCopy(memoryStream.GetBuffer(), 0, array, 0, (int)memoryStream.Position);
-			string text = Path.Join((ReadOnlySpan<char>)Server.rootFolder, (ReadOnlySpan<char>)"profiler");
-			if (!Directory.Exists(text))
-			{
-				Directory.CreateDirectory(text);
-			}
-			File.WriteAllBytes(Path.Join((ReadOnlySpan<char>)text, (ReadOnlySpan<char>)(filename + ".bin.gz")), Compression.Compress(array));
-			Debug.Log((object)"Snapshot bin export done!");
-		}
-	}
-
-	private const string OutputDir = "profiler";
-
-	private unsafe static void Preprocess(IList<ServerProfiler.Profile> profiles, out MainThreadInfo mainInfo, out uint totalBytes)
-	{
-		mainInfo = default(MainThreadInfo);
-		totalBytes = 0u;
-		uint num = 0u;
-		foreach (ServerProfiler.Profile profile in profiles)
-		{
-			if (profile.ThreadId == ServerProfiler.GetMainThreadId())
-			{
-				mainInfo.SyncIndices = new List<uint>(10);
-				mainInfo.FrameStarts = new List<uint>(10);
-				sbyte b = 0;
-				sbyte b2 = 0;
-				uint num2 = 0u;
-				uint num3 = 0u;
-				uint readInd = 0u;
-				while (readInd < profile.WriteEnd)
-				{
-					ServerProfiler.Mark mark = Unsafe.ReadUnaligned<ServerProfiler.Mark>(profile.Data + readInd);
-					switch (mark.Event)
-					{
-					case ServerProfiler.Mark.Type.Enter:
-						b++;
-						if (num3 <= num2)
-						{
-							num3 = readInd;
-						}
-						break;
-					case ServerProfiler.Mark.Type.Exit:
-					case ServerProfiler.Mark.Type.Exception:
-						b--;
-						if (b < b2)
-						{
-							b2 = b;
-							num2 = readInd;
-						}
-						break;
-					case ServerProfiler.Mark.Type.Sync:
-						mainInfo.SyncIndices.Add(readInd);
-						mainInfo.FrameStarts.Add(num3);
-						mainInfo.Frames++;
-						b = 0;
-						b2 = 0;
-						break;
-					}
-					AdvanceReadInd(in mark, profile.Data, ref readInd);
-				}
-				uint num4 = 0u;
-				long num5 = profile.Timestamp;
-				for (int i = 0; i < mainInfo.Frames; i++)
-				{
-					uint num6 = mainInfo.SyncIndices[i];
-					long timestamp = Unsafe.ReadUnaligned<ServerProfiler.Mark>(profile.Data + num6).Timestamp;
-					_ = ServerProfiler.TimestampToTimespan(timestamp - num5).TotalMilliseconds;
-					uint num7 = num6 - num4;
-					num += num7;
-					num5 = timestamp;
-					num4 = num6;
-				}
-				totalBytes += num;
-			}
-			else
-			{
-				totalBytes += profile.WriteEnd;
-			}
-		}
-		Debug.Log((object)("Total data: " + NumberExtensions.FormatBytes<uint>(totalBytes, false) + " (main: " + NumberExtensions.FormatBytes<uint>(num, false) + ", workers: " + NumberExtensions.FormatBytes<uint>(totalBytes - num, false) + ")"));
-	}
-
-	public unsafe static bool AdvanceReadInd(in ServerProfiler.Mark mark, byte* data, ref uint readInd)
-	{
-		readInd += (uint)sizeof(ServerProfiler.Mark);
-		switch (mark.Event)
-		{
-		case ServerProfiler.Mark.Type.Enter:
-			readInd += (uint)sizeof(ServerProfiler.Native.MonoMethod*);
-			break;
-		case ServerProfiler.Mark.Type.Alloc:
-			readInd += (uint)sizeof(ServerProfiler.Alloc);
-			break;
-		case ServerProfiler.Mark.Type.AllocWithStack:
-		{
-			readInd += (uint)sizeof(ServerProfiler.Alloc);
-			byte b = data[readInd];
-			readInd++;
-			readInd += (uint)(b * sizeof(ServerProfiler.Native.MonoMethod*));
-			break;
-		}
-		default:
-			Debug.LogError((object)"Unhandled ServerProfiler.Mark.Type!");
-			return false;
-		case ServerProfiler.Mark.Type.Sync:
-		case ServerProfiler.Mark.Type.Exit:
-		case ServerProfiler.Mark.Type.Exception:
-		case ServerProfiler.Mark.Type.GCBegin:
-		case ServerProfiler.Mark.Type.GCEnd:
-			break;
-		}
-		return true;
-	}
-}
-
-
-using System.Collections.Generic;
-
-private struct MainThreadInfo
-{
-	public List<uint> SyncIndices;
-
-	public List<uint> FrameStarts;
-
-	public uint Frames;
-}
-
-
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Runtime.CompilerServices;
-using ConVar;
-using Ionic.Zlib;
-using UnityEngine;
-
-public static class JSON
-{
-	private struct ThreadMetadata
-	{
-		internal int ThreadId;
-
-		internal int AllocationThreadId;
-
-		internal void Emit(StringStream builder)
-		{
-			bool isMainThread = ThreadId == ServerProfiler.GetMainThreadId();
-			EmitThreadName(isMainThread, isAllocThread: false, ThreadId, ThreadId, builder);
-			builder.Append(',');
-			EmitThreadName(isMainThread, isAllocThread: true, AllocationThreadId, ThreadId, builder);
-		}
-
-		private static void EmitThreadName(bool isMainThread, bool isAllocThread, int id, int origId, StringStream builder)
-		{
-			builder.Append("{\"name\":\"thread_name\",\"ph\":\"M\",\"pid\":0,\"tid\":");
-			builder.Append(id);
-			builder.Append(",\"args\":{\"name\":\"");
-			if (isMainThread)
-			{
-				builder.Append("Main Thread");
-			}
-			else
-			{
-				builder.Append("Thread");
-			}
-			if (isAllocThread)
-			{
-				if (!isMainThread)
-				{
-					builder.Append(' ');
-					builder.Append(origId);
-				}
-				builder.Append(" Allocations");
-			}
-			builder.Append("\"}}");
-		}
-	}
-
-	public class StringStream : MemoryStream
-	{
-		private GZipStream outputStream;
-
-		public StringStream(int capacity, GZipStream outputStream)
-			: base(capacity)
-		{
-			this.outputStream = outputStream;
-		}
-
-		public override void Write(byte[] buffer, int offset, int count)
-		{
-			if (base.Position + count < base.Capacity)
-			{
-				base.Write(buffer, offset, count);
-				return;
-			}
-			int num = base.Capacity - (int)base.Position;
-			if (num > 0)
-			{
-				base.Write(buffer, offset, num);
-			}
-			Flush();
-			if (count - num > 0)
-			{
-				base.Write(buffer, offset + num, count - num);
-			}
-		}
-
-		public override void Write(ReadOnlySpan<byte> source)
-		{
-			throw new NotSupportedException("Write(ReadOnlySpan<byte>) not implemented!");
-		}
-
-		public override void WriteByte(byte value)
-		{
-			if (base.Position + 1 < base.Capacity)
-			{
-				base.WriteByte(value);
-				return;
-			}
-			Flush();
-			base.WriteByte(value);
-		}
-
-		public void Append(char c)
-		{
-			WriteByte((byte)c);
-		}
-
-		public void Append(string text)
-		{
-			foreach (char c in text)
-			{
-				Append(c);
-			}
-		}
-
-		public void Append(int num)
-		{
-			Span<char> destination = stackalloc char[32];
-			num.TryFormat(destination, out var charsWritten);
-			Append(destination.Slice(0, charsWritten));
-		}
-
-		public void Append(long num)
-		{
-			Span<char> destination = stackalloc char[32];
-			num.TryFormat(destination, out var charsWritten);
-			Append(destination.Slice(0, charsWritten));
-		}
-
-		public void Append(ulong num)
-		{
-			Span<char> destination = stackalloc char[32];
-			num.TryFormat(destination, out var charsWritten);
-			Append(destination.Slice(0, charsWritten));
-		}
-
-		public void Append(ReadOnlySpan<char> chars)
-		{
-			ReadOnlySpan<char> readOnlySpan = chars;
-			for (int i = 0; i < readOnlySpan.Length; i++)
-			{
-				char c = readOnlySpan[i];
-				Append(c);
-			}
-		}
-
-		public override void Flush()
-		{
-			long position = Position;
-			if (position > 0)
-			{
-				byte[] buffer = GetBuffer();
-				((Stream)(object)outputStream).Write(buffer, 0, (int)position);
-				Position = 0L;
-			}
-		}
-	}
-
-	public static bool Export(string filename, IList<ServerProfiler.Profile> profiles, ServerProfiler.MemoryState memState)
-	{
-		//IL_0068: Unknown result type (might be due to invalid IL or missing references)
-		//IL_006f: Expected O, but got Unknown
-		try
-		{
-			Debug.Log((object)"Starting JSON snapshot generation...");
-			Preprocess(profiles, out var mainInfo, out var _);
-			string text = Path.Join((ReadOnlySpan<char>)Server.rootFolder, (ReadOnlySpan<char>)"profiler");
-			if (!Directory.Exists(text))
-			{
-				Directory.CreateDirectory(text);
-			}
-			using (FileStream fileStream = new FileStream(Path.Join((ReadOnlySpan<char>)text, (ReadOnlySpan<char>)(filename + ".json.gz")), FileMode.Create, FileAccess.Write, FileShare.None, 20480))
-			{
-				GZipStream val = new GZipStream((Stream)fileStream, (CompressionMode)0);
-				try
-				{
-					val.FlushMode = (FlushType)2;
-					using StringStream stringStream = new StringStream(16384, val);
-					stringStream.Append('[');
-					int num = 0;
-					foreach (ServerProfiler.Profile profile2 in profiles)
-					{
-						num = Math.Max(num, profile2.ThreadId);
-					}
-					List<ThreadMetadata> list = new List<ThreadMetadata>();
-					for (int i = 0; i < profiles.Count; i++)
-					{
-						ServerProfiler.Profile profile = profiles[i];
-						ThreadMetadata item = default(ThreadMetadata);
-						item.ThreadId = profile.ThreadId;
-						num = (item.AllocationThreadId = num + 1);
-						if (i != 0)
-						{
-							stringStream.Append(',');
-						}
-						item.Emit(stringStream);
-						list.Add(item);
-					}
-					long firstMarkTimestamp = 0L;
-					for (int j = 0; j < profiles.Count; j++)
-					{
-						ServerProfiler.Profile mainProfile = profiles[j];
-						if (mainProfile.ThreadId == ServerProfiler.GetMainThreadId())
-						{
-							if (ProcessMainProfile(in mainProfile, in mainInfo, list[j], stringStream, out firstMarkTimestamp))
-							{
-								break;
-							}
-							return false;
-						}
-					}
-					for (int k = 0; k < profiles.Count; k++)
-					{
-						ServerProfiler.Profile workerProfile = profiles[k];
-						if (workerProfile.ThreadId != ServerProfiler.GetMainThreadId() && !ProcessWorkerProfile(in workerProfile, list[k], firstMarkTimestamp, stringStream))
-						{
-							return false;
-						}
-					}
-					ProcessMemoryState(in memState, firstMarkTimestamp, stringStream);
-					stringStream.Append("]");
-					stringStream.Flush();
-					Debug.Log((object)"Generation done, flushing...");
-				}
-				finally
-				{
-					((IDisposable)val)?.Dispose();
-				}
-			}
-			Debug.Log((object)"Snapshot json export done!");
-			return true;
-		}
-		catch (Exception ex)
-		{
-			Debug.LogException(ex);
-			return false;
-		}
-	}
-
-	private unsafe static bool ProcessMainProfile(in ServerProfiler.Profile mainProfile, in MainThreadInfo info, in ThreadMetadata metadata, StringStream builder, out long firstMarkTimestamp)
-	{
-		if (info.FrameStarts == null || info.Frames == 0)
-		{
-			Debug.LogError((object)"ServerProfiler: Didn't find any main frame info!");
-			firstMarkTimestamp = 0L;
-			return false;
-		}
-		int num = 0;
-		byte* data = mainProfile.Data;
-		uint num2 = info.FrameStarts[0];
-		firstMarkTimestamp = Unsafe.ReadUnaligned<ServerProfiler.Mark>(data + num2).Timestamp;
-		long num3 = 0L;
-		for (int i = 0; i < info.Frames; i++)
-		{
-			uint num4 = info.FrameStarts[i];
-			ServerProfiler.Mark mark = Unsafe.ReadUnaligned<ServerProfiler.Mark>(data + num4);
-			uint num5 = mainProfile.WriteEnd;
-			if (i < info.Frames - 1)
-			{
-				num5 = info.FrameStarts[i + 1];
-			}
-			ServerProfiler.Mark mark2 = default(ServerProfiler.Mark);
-			mark2.Event = ServerProfiler.Mark.Type.Enter;
-			mark2.Timestamp = mark.Timestamp;
-			AddMark(mark2, $"UnityFrame{i}", mainProfile.ThreadId, firstMarkTimestamp, builder);
-			uint totalMem = 0u;
-			long offset = ServerProfiler.TimestampToMicros(mark.Timestamp - firstMarkTimestamp);
-			EmitCounter("Main Thread", offset, "Total(B)", totalMem, builder);
-			uint readInd = num4;
-			while (readInd < num5)
-			{
-				ServerProfiler.Mark mark3 = Unsafe.ReadUnaligned<ServerProfiler.Mark>(data + readInd);
-				num3 = mark3.Timestamp;
-				num += AdjustCallstackDepth(in mark3);
-				if (num < 0)
-				{
-					Debug.LogError((object)$"ServerProfiler: Unexpected callstack depth: {num}, offset: {readInd}, frame: {i}");
-					return false;
-				}
-				AddMark(in mainProfile, in metadata, readInd, ref totalMem, firstMarkTimestamp, builder);
-				if (!AdvanceReadInd(in mark3, data, ref readInd))
-				{
-					return false;
-				}
-			}
-			long timestamp = ((i < info.Frames - 1) ? Unsafe.ReadUnaligned<ServerProfiler.Mark>(data + num5).Timestamp : num3);
-			mark2 = default(ServerProfiler.Mark);
-			mark2.Event = ServerProfiler.Mark.Type.Exit;
-			mark2.Timestamp = timestamp;
-			AddMark(mark2, null, mainProfile.ThreadId, firstMarkTimestamp, builder);
-		}
-		while (num > 0)
-		{
-			ServerProfiler.Mark mark4 = default(ServerProfiler.Mark);
-			mark4.Event = ServerProfiler.Mark.Type.Exit;
-			mark4.Timestamp = num3;
-			AddMark(mark4, null, mainProfile.ThreadId, firstMarkTimestamp, builder);
-			num--;
-		}
-		return true;
-	}
-
-	private unsafe static bool ProcessWorkerProfile(in ServerProfiler.Profile workerProfile, in ThreadMetadata metadata, long firstMarkTimestamp, StringStream builder)
-	{
-		uint readInd = 0u;
-		int num = 0;
-		while (readInd < workerProfile.WriteEnd)
-		{
-			ServerProfiler.Mark mark = Unsafe.ReadUnaligned<ServerProfiler.Mark>(workerProfile.Data + readInd);
-			if (mark.Timestamp >= firstMarkTimestamp)
-			{
-				break;
-			}
-			if (mark.Event == ServerProfiler.Mark.Type.Sync)
-			{
-				Debug.LogError((object)"Unexpected mark in worker stream, aborting!");
-				return false;
-			}
-			num += AdjustCallstackDepth(in mark);
-			if (!AdvanceReadInd(in mark, workerProfile.Data, ref readInd))
-			{
-				return false;
-			}
-		}
-		if (readInd >= workerProfile.WriteEnd)
-		{
-			return true;
-		}
-		bool flag = false;
-		uint readInd2 = readInd;
-		while (readInd2 < workerProfile.WriteEnd)
-		{
-			ServerProfiler.Mark mark2 = Unsafe.ReadUnaligned<ServerProfiler.Mark>(workerProfile.Data + readInd2);
-			if (mark2.Event == ServerProfiler.Mark.Type.Sync)
-			{
-				Debug.LogError((object)"Unexpected mark in worker stream, aborting!");
-				return false;
-			}
-			if (mark2.Event != ServerProfiler.Mark.Type.Alloc)
-			{
-				flag = true;
-				break;
-			}
-			if (!AdvanceReadInd(in mark2, workerProfile.Data, ref readInd2))
-			{
-				return false;
-			}
-		}
-		if (!flag)
-		{
-			return true;
-		}
-		if (!FindStartingDepth(in workerProfile, 0u, workerProfile.WriteEnd, out var minDepth))
-		{
-			return false;
-		}
-		minDepth = num - minDepth;
-		for (int num2 = minDepth; num2 > 0; num2--)
-		{
-			ServerProfiler.Mark mark3 = default(ServerProfiler.Mark);
-			mark3.Event = ServerProfiler.Mark.Type.Enter;
-			mark3.Timestamp = firstMarkTimestamp;
-			AddMark(mark3, "Unknown", workerProfile.ThreadId, firstMarkTimestamp, builder);
-		}
-		uint totalMem = 0u;
-		long timestamp = 0L;
-		uint readInd3 = readInd;
-		while (readInd3 < workerProfile.WriteEnd)
-		{
-			ServerProfiler.Mark mark4 = Unsafe.ReadUnaligned<ServerProfiler.Mark>(workerProfile.Data + readInd3);
-			timestamp = mark4.Timestamp;
-			minDepth += AdjustCallstackDepth(in mark4);
-			if (minDepth < 0)
-			{
-				Debug.LogError((object)$"ServerProfiler: Unexpected callstack depth: {minDepth}, offset: {readInd3}, thread: {workerProfile.ThreadId}");
-				return false;
-			}
-			if (mark4.Event == ServerProfiler.Mark.Type.Alloc || (mark4.Event == ServerProfiler.Mark.Type.AllocWithStack && totalMem == 0))
-			{
-				EmitCounter("Thread", metadata.ThreadId, 0L, "Total(B)", 0uL, builder);
-			}
-			AddMark(in workerProfile, in metadata, readInd3, ref totalMem, firstMarkTimestamp, builder);
-			if (!AdvanceReadInd(in mark4, workerProfile.Data, ref readInd3))
-			{
-				return false;
-			}
-		}
-		while (minDepth > 0)
-		{
-			ServerProfiler.Mark mark5 = default(ServerProfiler.Mark);
-			mark5.Event = ServerProfiler.Mark.Type.Exit;
-			mark5.Timestamp = timestamp;
-			AddMark(mark5, null, workerProfile.ThreadId, firstMarkTimestamp, builder);
-			minDepth--;
-		}
-		return true;
-	}
-
-	private unsafe static void ProcessMemoryState(in ServerProfiler.MemoryState memState, long firstMarkTimestamp, StringStream builder)
-	{
-		ulong num = 0uL;
-		ulong num2 = 0uL;
-		for (uint num3 = 0u; num3 < memState.Created; num3++)
-		{
-			ServerProfiler.MemoryReading memoryReading = memState.Readings[num3];
-			long timestamp = memoryReading.Timestamp;
-			if (timestamp >= firstMarkTimestamp)
-			{
-				ulong num4 = memoryReading.WorkingSet / 1024;
-				if (num4 != num)
-				{
-					long offset = ((num == 0L) ? 0 : ServerProfiler.TimestampToMicros(timestamp - firstMarkTimestamp));
-					EmitCounter("ws", offset, "WorkingSet(KB)", num4, builder);
-					num = num4;
-				}
-				ulong num5 = memoryReading.VirtualSet / 1024;
-				if (num5 != num2)
-				{
-					long offset2 = ((num2 == 0L) ? 0 : ServerProfiler.TimestampToMicros(timestamp - firstMarkTimestamp));
-					EmitCounter("vs", offset2, "VirtualSet(KB)", num5, builder);
-					num2 = num5;
-				}
-			}
-		}
-	}
-
-	private unsafe static void AddMark(in ServerProfiler.Profile threadProfile, in ThreadMetadata metadata, uint markInd, ref uint totalMem, long startTimestamp, StringStream builder)
-	{
-		byte* ptr = threadProfile.Data + markInd;
-		ServerProfiler.Mark mark = Unsafe.ReadUnaligned<ServerProfiler.Mark>(ptr);
-		ptr += sizeof(ServerProfiler.Mark);
-		switch (mark.Event)
-		{
-		case ServerProfiler.Mark.Type.Enter:
-			builder.Append(",{\"name\":\"");
-			ServerProfiler.AppendNameTo(*(ServerProfiler.Native.MonoMethod**)ptr, builder);
-			builder.Append("\",\"cat\":\"P\",\"ph\":\"B\",\"ts\":");
-			builder.Append(ServerProfiler.TimestampToMicros(mark.Timestamp - startTimestamp));
-			builder.Append(",\"pid\":0,\"tid\":");
-			builder.Append(threadProfile.ThreadId);
-			builder.Append("}");
-			break;
-		case ServerProfiler.Mark.Type.Exit:
-		case ServerProfiler.Mark.Type.Exception:
-		case ServerProfiler.Mark.Type.GCEnd:
-			builder.Append(",{\"ph\":\"E\",\"ts\":");
-			builder.Append(ServerProfiler.TimestampToMicros(mark.Timestamp - startTimestamp));
-			builder.Append(",\"pid\":0,\"tid\":");
-			builder.Append(threadProfile.ThreadId);
-			builder.Append("}");
-			break;
-		case ServerProfiler.Mark.Type.Alloc:
-		{
-			ServerProfiler.Alloc alloc2 = Unsafe.ReadUnaligned<ServerProfiler.Alloc>(ptr);
-			long num2 = ServerProfiler.TimestampToMicros(mark.Timestamp - startTimestamp);
-			builder.Append(",{\"name\":\"");
-			builder.Append("Alloc ");
-			builder.Append(alloc2.AlignedSize);
-			builder.Append("b\",\"ph\":\"i\",\"ts\":");
-			builder.Append(num2);
-			builder.Append(",\"pid\":0,\"tid\":");
-			builder.Append(threadProfile.ThreadId);
-			builder.Append(",\"s\":\"t\",\"cat\":\"A\",\"args\":{\"size\":");
-			builder.Append(alloc2.AlignedSize);
-			builder.Append(",\"type\":\"");
-			ServerProfiler.AppendNameTo(alloc2, builder);
-			builder.Append("\",\"lastMethod\":\"");
-			if (alloc2.LastMethod != null)
-			{
-				ServerProfiler.AppendNameTo(alloc2.LastMethod, builder);
-			}
-			else
-			{
-				builder.Append("<mono-native-runtime>");
-			}
-			builder.Append("\"}}");
-			builder.Append(",{\"name\":\"");
-			builder.Append("Alloc ");
-			builder.Append(alloc2.AlignedSize);
-			builder.Append("b\",\"ph\":\"i\",\"ts\":");
-			builder.Append(num2);
-			builder.Append(",\"pid\":0,\"tid\":");
-			builder.Append(metadata.AllocationThreadId);
-			builder.Append(",\"s\":\"t\",\"cat\":\"A\",\"args\":{\"size\":");
-			builder.Append(alloc2.AlignedSize);
-			builder.Append(",\"type\":\"");
-			ServerProfiler.AppendNameTo(alloc2, builder);
-			builder.Append("\",\"lastMethod\":\"");
-			if (alloc2.LastMethod != null)
-			{
-				ServerProfiler.AppendNameTo(alloc2.LastMethod, builder);
-			}
-			else
-			{
-				builder.Append("<mono-native-runtime>");
-			}
-			builder.Append("\"}}");
-			totalMem += alloc2.AlignedSize;
-			if (metadata.ThreadId == ServerProfiler.GetMainThreadId())
-			{
-				EmitCounter("Main Thread", num2, "Total(B)", totalMem, builder);
-			}
-			else
-			{
-				EmitCounter("Thread", metadata.ThreadId, num2, "Total(B)", totalMem, builder);
-			}
-			break;
-		}
-		case ServerProfiler.Mark.Type.AllocWithStack:
-		{
-			ServerProfiler.Alloc alloc = Unsafe.ReadUnaligned<ServerProfiler.Alloc>(ptr);
-			ptr += sizeof(ServerProfiler.Alloc);
-			long num = ServerProfiler.TimestampToMicros(mark.Timestamp - startTimestamp);
-			builder.Append(",{\"name\":\"");
-			builder.Append("Alloc ");
-			builder.Append(alloc.AlignedSize);
-			builder.Append("b\",\"ph\":\"i\",\"ts\":");
-			builder.Append(num);
-			builder.Append(",\"pid\":0,\"tid\":");
-			builder.Append(metadata.ThreadId);
-			builder.Append(",\"s\":\"t\",\"cat\":\"A\",\"args\":{\"size\":");
-			builder.Append(alloc.AlignedSize);
-			builder.Append(",\"type\":\"");
-			ServerProfiler.AppendNameTo(alloc, builder);
-			builder.Append("\",\"lastMethod\":\"");
-			if (alloc.LastMethod != null)
-			{
-				ServerProfiler.AppendNameTo(alloc.LastMethod, builder);
-			}
-			else
-			{
-				builder.Append("<mono-native-runtime>");
-			}
-			builder.Append('"');
-			byte b = *ptr;
-			ptr++;
-			if (b > 0)
-			{
-				builder.Append(",\"callstack\":{");
-				ServerProfiler.Native.MonoMethod** ptr2 = (ServerProfiler.Native.MonoMethod**)ptr;
-				for (byte b2 = 0; b2 < b; b2++)
-				{
-					ServerProfiler.Native.MonoMethod* method = ptr2[(int)b2];
-					builder.Append('"');
-					char c = (char)(b2 + 32);
-					if (c >= '"')
-					{
-						c = (char)(c + 1);
-					}
-					if (c >= '.')
-					{
-						c = (char)(c + 1);
-					}
-					if (c >= '\\')
-					{
-						c = (char)(c + 1);
-					}
-					if (c < '\u007f')
-					{
-						builder.Append(c);
-					}
-					else
-					{
-						builder.Append(b2);
-					}
-					builder.Append("\":\"");
-					ServerProfiler.AppendNameTo(method, builder);
-					builder.Append('"');
-					if (b2 != b - 1)
-					{
-						builder.Append(',');
-					}
-				}
-				builder.Append('}');
-			}
-			builder.Append("}}");
-			totalMem += alloc.AlignedSize;
-			if (metadata.ThreadId == ServerProfiler.GetMainThreadId())
-			{
-				EmitCounter("Main Thread", num, "Total(B)", totalMem, builder);
-			}
-			else
-			{
-				EmitCounter("Thread", metadata.ThreadId, num, "Total(B)", totalMem, builder);
-			}
-			break;
-		}
-		case ServerProfiler.Mark.Type.GCBegin:
-			builder.Append(",{\"name\":\"");
-			builder.Append("GC.Collect");
-			builder.Append("\",\"cat\":\"P\",\"ph\":\"B\",\"ts\":");
-			builder.Append(ServerProfiler.TimestampToMicros(mark.Timestamp - startTimestamp));
-			builder.Append(",\"pid\":0,\"tid\":");
-			builder.Append(threadProfile.ThreadId);
-			builder.Append("}");
-			break;
-		}
-	}
-
-	private static void AddMark(ServerProfiler.Mark mark, string name, int threadId, long startTimestamp, StringStream builder)
-	{
-		switch (mark.Event)
-		{
-		case ServerProfiler.Mark.Type.Enter:
-			builder.Append(",{\"name\":\"");
-			builder.Append(name);
-			builder.Append("\",\"cat\":\"P\",\"ph\":\"B\",\"ts\":");
-			builder.Append(ServerProfiler.TimestampToMicros(mark.Timestamp - startTimestamp));
-			builder.Append(",\"pid\":0,\"tid\":");
-			builder.Append(threadId);
-			builder.Append("}");
-			break;
-		case ServerProfiler.Mark.Type.Exit:
-		case ServerProfiler.Mark.Type.Exception:
-			builder.Append(",{\"ph\":\"E\",\"ts\":");
-			builder.Append(ServerProfiler.TimestampToMicros(mark.Timestamp - startTimestamp));
-			builder.Append(",\"pid\":0,\"tid\":");
-			builder.Append(threadId);
-			builder.Append("}");
-			break;
-		}
-	}
-
-	private static void EmitCounter(string markName, long offset, string counterName, ulong value, StringStream builder)
-	{
-		builder.Append(",{\"name\":\"");
-		builder.Append(markName);
-		builder.Append("\",\"ph\":\"C\",\"ts\":");
-		builder.Append(offset);
-		builder.Append(",\"args\":{\"");
-		builder.Append(counterName);
-		builder.Append("\":");
-		builder.Append(value);
-		builder.Append("}}");
-	}
-
-	private static void EmitCounter(string markName, int threadId, long offset, string counterName, ulong value, StringStream builder)
-	{
-		builder.Append(",{\"name\":\"");
-		builder.Append(markName);
-		builder.Append(" ");
-		builder.Append(threadId);
-		builder.Append("\",\"ph\":\"C\",\"ts\":");
-		builder.Append(offset);
-		builder.Append(",\"args\":{\"");
-		builder.Append(counterName);
-		builder.Append("\":");
-		builder.Append(value);
-		builder.Append("}}");
-	}
-
-	private unsafe static bool FindStartingDepth(in ServerProfiler.Profile threadProfile, uint start, uint end, out int minDepth)
-	{
-		int num = 0;
-		minDepth = 0;
-		uint readInd = start;
-		while (readInd < end)
-		{
-			ServerProfiler.Mark mark = Unsafe.ReadUnaligned<ServerProfiler.Mark>(threadProfile.Data + readInd);
-			num += AdjustCallstackDepth(in mark);
-			if (mark.Event == ServerProfiler.Mark.Type.Exit || mark.Event == ServerProfiler.Mark.Type.Exception)
-			{
-				minDepth = Math.Min(num, minDepth);
-			}
-			if (!AdvanceReadInd(in mark, threadProfile.Data, ref readInd))
-			{
-				return false;
-			}
-		}
-		return true;
-	}
-
-	private static int AdjustCallstackDepth(in ServerProfiler.Mark mark)
-	{
-		switch (mark.Event)
-		{
-		case ServerProfiler.Mark.Type.Enter:
-			return 1;
-		case ServerProfiler.Mark.Type.Exit:
-		case ServerProfiler.Mark.Type.Exception:
-			return -1;
-		default:
-			return 0;
-		}
-	}
-}
-
-
-private struct ThreadMetadata
-{
-	internal int ThreadId;
-
-	internal int AllocationThreadId;
-
-	internal void Emit(StringStream builder)
-	{
-		bool isMainThread = ThreadId == ServerProfiler.GetMainThreadId();
-		EmitThreadName(isMainThread, isAllocThread: false, ThreadId, ThreadId, builder);
-		builder.Append(',');
-		EmitThreadName(isMainThread, isAllocThread: true, AllocationThreadId, ThreadId, builder);
-	}
-
-	private static void EmitThreadName(bool isMainThread, bool isAllocThread, int id, int origId, StringStream builder)
-	{
-		builder.Append("{\"name\":\"thread_name\",\"ph\":\"M\",\"pid\":0,\"tid\":");
-		builder.Append(id);
-		builder.Append(",\"args\":{\"name\":\"");
-		if (isMainThread)
-		{
-			builder.Append("Main Thread");
-		}
-		else
-		{
-			builder.Append("Thread");
-		}
-		if (isAllocThread)
-		{
-			if (!isMainThread)
-			{
-				builder.Append(' ');
-				builder.Append(origId);
-			}
-			builder.Append(" Allocations");
-		}
-		builder.Append("\"}}");
-	}
-}
-
-
-using System;
-using System.IO;
-using Ionic.Zlib;
-
-public class StringStream : MemoryStream
-{
-	private GZipStream outputStream;
-
-	public StringStream(int capacity, GZipStream outputStream)
-		: base(capacity)
-	{
-		this.outputStream = outputStream;
-	}
-
-	public override void Write(byte[] buffer, int offset, int count)
-	{
-		if (base.Position + count < base.Capacity)
-		{
-			base.Write(buffer, offset, count);
-			return;
-		}
-		int num = base.Capacity - (int)base.Position;
-		if (num > 0)
-		{
-			base.Write(buffer, offset, num);
-		}
-		Flush();
-		if (count - num > 0)
-		{
-			base.Write(buffer, offset + num, count - num);
-		}
-	}
-
-	public override void Write(ReadOnlySpan<byte> source)
-	{
-		throw new NotSupportedException("Write(ReadOnlySpan<byte>) not implemented!");
-	}
-
-	public override void WriteByte(byte value)
-	{
-		if (base.Position + 1 < base.Capacity)
-		{
-			base.WriteByte(value);
-			return;
-		}
-		Flush();
-		base.WriteByte(value);
-	}
-
-	public void Append(char c)
-	{
-		WriteByte((byte)c);
-	}
-
-	public void Append(string text)
-	{
-		foreach (char c in text)
-		{
-			Append(c);
-		}
-	}
-
-	public void Append(int num)
-	{
-		Span<char> destination = stackalloc char[32];
-		num.TryFormat(destination, out var charsWritten);
-		Append(destination.Slice(0, charsWritten));
-	}
-
-	public void Append(long num)
-	{
-		Span<char> destination = stackalloc char[32];
-		num.TryFormat(destination, out var charsWritten);
-		Append(destination.Slice(0, charsWritten));
-	}
-
-	public void Append(ulong num)
-	{
-		Span<char> destination = stackalloc char[32];
-		num.TryFormat(destination, out var charsWritten);
-		Append(destination.Slice(0, charsWritten));
-	}
-
-	public void Append(ReadOnlySpan<char> chars)
-	{
-		ReadOnlySpan<char> readOnlySpan = chars;
-		for (int i = 0; i < readOnlySpan.Length; i++)
-		{
-			char c = readOnlySpan[i];
-			Append(c);
-		}
-	}
-
-	public override void Flush()
-	{
-		long position = Position;
-		if (position > 0)
-		{
-			byte[] buffer = GetBuffer();
-			((Stream)(object)outputStream).Write(buffer, 0, (int)position);
-			Position = 0L;
-		}
-	}
-}
-
-
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Runtime.CompilerServices;
-using ConVar;
-using Facepunch.Utility;
-using UnityEngine;
-
-public static class Binary
-{
-	private enum Section : byte
-	{
-		Info,
-		Thread,
-		Marks
-	}
-
-	private struct SectionBlock : IDisposable
-	{
-		private MemoryStream stream;
-
-		private long startPos;
-
-		public static SectionBlock New(Section section, MemoryStream stream)
-		{
-			SectionBlock result = default(SectionBlock);
-			result.stream = stream;
-			result.startPos = stream.Position;
-			result.Begin(section);
-			return result;
-		}
-
-		private void Begin(Section section)
-		{
-			Write(4276993775u);
-			Write((byte)section);
-			Write(ulong.MaxValue);
-		}
-
-		private void End()
-		{
-			long num = startPos + 5;
-			long num2 = stream.Position - num - 8;
-			byte[] buffer = stream.GetBuffer();
-			for (byte b = 0; b < 8; b++)
-			{
-				buffer[num + b] = (byte)(num2 >> 56 - b * 8);
-			}
-			Write(3735928559u);
-		}
-
-		public void Write(string text)
-		{
-			Write((ushort)text.Length);
-			for (int i = 0; i < text.Length; i++)
-			{
-				stream.WriteByte((byte)text[i]);
-			}
-		}
-
-		public void Write(ulong value)
-		{
-			for (byte b = 0; b < 8; b++)
-			{
-				stream.WriteByte((byte)(value >> 56 - b * 8));
-			}
-		}
-
-		public void Write(uint value)
-		{
-			for (byte b = 0; b < 4; b++)
-			{
-				stream.WriteByte((byte)(value >> 24 - b * 8));
-			}
-		}
-
-		public void Write(ushort value)
-		{
-			stream.WriteByte((byte)(value >> 8));
-			stream.WriteByte((byte)value);
-		}
-
-		public void Write(byte value)
-		{
-			stream.WriteByte(value);
-		}
-
-		void IDisposable.Dispose()
-		{
-			End();
-		}
-	}
-
-	public unsafe static void Export(string filename, IList<ServerProfiler.Profile> profiles)
-	{
-		Debug.Log((object)"Starting BIN snapshot generation...");
-		MemoryStream memoryStream = new MemoryStream(134217728);
-		using (SectionBlock sectionBlock = SectionBlock.New(Section.Info, memoryStream))
-		{
-			sectionBlock.Write("Nothing");
-		}
-		foreach (ServerProfiler.Profile profile in profiles)
-		{
-			using SectionBlock sectionBlock2 = SectionBlock.New(Section.Thread, memoryStream);
-			sectionBlock2.Write((uint)profile.ThreadId);
-			using SectionBlock sectionBlock3 = SectionBlock.New(Section.Marks, memoryStream);
-			uint readInd = 0u;
-			while (readInd < profile.WriteEnd)
-			{
-				byte* ptr = profile.Data + readInd;
-				ServerProfiler.Mark mark = Unsafe.ReadUnaligned<ServerProfiler.Mark>(ptr);
-				sectionBlock3.Write((byte)mark.Event);
-				sectionBlock3.Write((ulong)mark.Timestamp);
-				switch (mark.Event)
-				{
-				case ServerProfiler.Mark.Type.Enter:
-					ServerProfiler.SerializeNameTo(*(ServerProfiler.Native.MonoMethod**)(ptr + sizeof(ServerProfiler.Mark)), memoryStream);
-					break;
-				case ServerProfiler.Mark.Type.Alloc:
-				{
-					ServerProfiler.Alloc alloc = Unsafe.ReadUnaligned<ServerProfiler.Alloc>(ptr + sizeof(ServerProfiler.Mark));
-					ServerProfiler.SerializeNameTo(alloc, memoryStream);
-					sectionBlock3.Write(alloc.AlignedSize);
-					break;
-				}
-				}
-				AdvanceReadInd(in mark, profile.Data, ref readInd);
-			}
-		}
-		Debug.Log((object)"Generation done, compressing...");
-		byte[] array = new byte[memoryStream.Position];
-		Buffer.BlockCopy(memoryStream.GetBuffer(), 0, array, 0, (int)memoryStream.Position);
-		string text = Path.Join((ReadOnlySpan<char>)Server.rootFolder, (ReadOnlySpan<char>)"profiler");
-		if (!Directory.Exists(text))
-		{
-			Directory.CreateDirectory(text);
-		}
-		File.WriteAllBytes(Path.Join((ReadOnlySpan<char>)text, (ReadOnlySpan<char>)(filename + ".bin.gz")), Compression.Compress(array));
-		Debug.Log((object)"Snapshot bin export done!");
-	}
-}
-
-
-private enum Section : byte
-{
-	Info,
-	Thread,
-	Marks
-}
-
-
-using System;
-using System.IO;
-
-private struct SectionBlock : IDisposable
-{
-	private MemoryStream stream;
-
-	private long startPos;
-
-	public static SectionBlock New(Section section, MemoryStream stream)
-	{
-		SectionBlock result = default(SectionBlock);
-		result.stream = stream;
-		result.startPos = stream.Position;
-		result.Begin(section);
-		return result;
-	}
-
-	private void Begin(Section section)
-	{
-		Write(4276993775u);
-		Write((byte)section);
-		Write(ulong.MaxValue);
-	}
-
-	private void End()
-	{
-		long num = startPos + 5;
-		long num2 = stream.Position - num - 8;
-		byte[] buffer = stream.GetBuffer();
-		for (byte b = 0; b < 8; b++)
-		{
-			buffer[num + b] = (byte)(num2 >> 56 - b * 8);
-		}
-		Write(3735928559u);
-	}
-
-	public void Write(string text)
-	{
-		Write((ushort)text.Length);
-		for (int i = 0; i < text.Length; i++)
-		{
-			stream.WriteByte((byte)text[i]);
-		}
-	}
-
-	public void Write(ulong value)
-	{
-		for (byte b = 0; b < 8; b++)
-		{
-			stream.WriteByte((byte)(value >> 56 - b * 8));
-		}
-	}
-
-	public void Write(uint value)
-	{
-		for (byte b = 0; b < 4; b++)
-		{
-			stream.WriteByte((byte)(value >> 24 - b * 8));
-		}
-	}
-
-	public void Write(ushort value)
-	{
-		stream.WriteByte((byte)(value >> 8));
-		stream.WriteByte((byte)value);
-	}
-
-	public void Write(byte value)
-	{
-		stream.WriteByte(value);
-	}
-
-	void IDisposable.Dispose()
-	{
-		End();
-	}
-}
-
-
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Runtime.InteropServices;
-using System.Security;
-using System.Text;
-using UnityEngine;
-
-[SuppressUnmanagedCodeSecurity]
-public static class ServerProfiler
-{
-	[StructLayout(LayoutKind.Sequential, Pack = 1, Size = 9)]
-	public struct Mark
-	{
-		public enum Type : byte
-		{
-			Sync,
-			Enter,
-			Exit,
-			Exception,
-			Alloc,
-			GCBegin,
-			GCEnd,
-			AllocWithStack
-		}
-
-		public long Timestamp;
-
-		public Type Event;
-	}
-
-	public struct Alloc
-	{
-		public unsafe Native.MonoClass* Class;
-
-		public unsafe Native.MonoMethod* LastMethod;
-
-		public uint AlignedSize;
-
-		public uint FlatArraySize;
-	}
-
-	public struct Profile
-	{
-		public unsafe byte* Data;
-
-		private uint WriteInd;
-
-		public uint Capacity;
-
-		public uint WriteEnd;
-
-		public int ThreadId;
-
-		public long Timestamp;
-	}
-
-	[StructLayout(LayoutKind.Sequential, Size = 64)]
-	public struct MemoryReading
-	{
-		public long Timestamp;
-
-		public ulong WorkingSet;
-
-		public ulong VirtualSet;
-	}
-
-	public struct MemoryState
-	{
-		public unsafe MemoryReading* Readings;
-
-		public uint Created;
-
-		public uint Capacity;
-	}
-
-	public enum NotifyMetric : byte
-	{
-		TotalAllocCount,
-		TotalMem,
-		MainAllocCount,
-		MainMem,
-		WorkerAllocCount,
-		WorkerMem,
-		Count
-	}
-
-	public static class Native
-	{
-		[StructLayout(LayoutKind.Explicit)]
-		public struct MonoImage
-		{
-			[FieldOffset(48)]
-			public unsafe byte* AssemblyName;
-		}
-
-		[StructLayout(LayoutKind.Explicit)]
-		public struct MonoClass
-		{
-			private const int ImageOffset = 56;
-
-			[FieldOffset(56)]
-			public unsafe MonoImage* Image;
-
-			[FieldOffset(64)]
-			public unsafe byte* Name;
-
-			[FieldOffset(72)]
-			public unsafe byte* Namespace;
-		}
-
-		[StructLayout(LayoutKind.Explicit)]
-		public struct MonoMethod
-		{
-			[FieldOffset(8)]
-			public unsafe MonoClass* Class;
-
-			[FieldOffset(24)]
-			public unsafe byte* Name;
-		}
-
-		[StructLayout(LayoutKind.Explicit)]
-		public struct MonoVTable
-		{
-			[FieldOffset(0)]
-			public unsafe MonoClass* Class;
-		}
-
-		[StructLayout(LayoutKind.Explicit)]
-		public struct MonoObject
-		{
-			[FieldOffset(0)]
-			public unsafe MonoVTable* VTable;
-		}
-
-		public enum StorageType : byte
-		{
-			FrameLimited,
-			FixedBuffer
-		}
-
-		[DllImport("ServerProfiler.Core")]
-		public static extern void Install();
-
-		[DllImport("ServerProfiler.Core")]
-		public static extern void SetStorageType(byte aStorageType);
-
-		[DllImport("ServerProfiler.Core")]
-		public static extern bool SetFramesToRecord(byte aFrameCount);
-
-		[DllImport("ServerProfiler.Core")]
-		public static extern bool SetFixedBufferCap(uint aMainThreadCap, uint aWorkerThreadCap);
-
-		[DllImport("ServerProfiler.Core")]
-		public static extern void TakeSnapshot();
-
-		[DllImport("ServerProfiler.Core")]
-		public static extern void StartContinuousProfiling(byte aMaxStackDepth);
-
-		[DllImport("ServerProfiler.Core")]
-		public static extern void StopContinuousProfiling();
-
-		[DllImport("ServerProfiler.Core")]
-		public static extern void ResumeContinuousProfiling();
-
-		[DllImport("ServerProfiler.Core")]
-		public static extern void SetContinuousProfilerNotifySettings(NotifyMetric aSetting, uint aValue);
-
-		[DllImport("ServerProfiler.Core")]
-		public static extern bool OnFrameEnd();
-
-		[DllImport("ServerProfiler.Core")]
-		public unsafe static extern void GetData(out Profile** profiles, out byte count);
-
-		[DllImport("ServerProfiler.Core")]
-		public unsafe static extern void GetMemoryUsage(out MemoryState* state);
-
-		[DllImport("ServerProfiler.Core")]
-		public static extern bool ReleaseResources();
-	}
-
-	public const byte MaxFrames = 10;
-
-	private static bool canBeActivated;
-
-	private static Action<IList<Profile>, MemoryState> onDoneCallback;
-
-	private static bool isContinuous;
-
-	private static int mainThreadId;
-
-	public static bool IsRunning => onDoneCallback != null;
-
-	[RuntimeInitializeOnLoadMethod(/*Could not decode attribute arguments.*/)]
-	public static void Init()
-	{
-		if (!Environment.CommandLine.Contains("-enableProfiler"))
-		{
-			Debug.Log((object)"Profiler Disabled!");
-			return;
-		}
-		mainThreadId = Environment.CurrentManagedThreadId;
-		Native.Install();
-		canBeActivated = true;
-		Debug.Log((object)"Profiler Initialized!");
-		PostUpdateHook.EndOfFrame = (Action)Delegate.Combine(PostUpdateHook.EndOfFrame, new Action(OnFrameEnd));
-	}
-
-	public static void RecordNextFrames(int frames, Action<IList<Profile>, MemoryState> onDone)
-	{
-		if (onDone != null && IsEnabled())
-		{
-			onDoneCallback = onDone;
-			Native.SetStorageType(0);
-			Native.SetFramesToRecord((byte)Math.Clamp(frames, 1, 10));
-			Native.TakeSnapshot();
-			isContinuous = false;
-		}
-	}
-
-	public static void RecordIntoBuffer(uint mainThreadCap, uint workerThreadCap, Action<IList<Profile>, MemoryState> onDone)
-	{
-		if (onDone != null && IsEnabled())
-		{
-			onDoneCallback = onDone;
-			Native.SetStorageType(1);
-			Native.SetFixedBufferCap(mainThreadCap, workerThreadCap);
-			Native.TakeSnapshot();
-			isContinuous = false;
-		}
-	}
-
-	public static void StartContinuousRecording(byte maxStackDepth, Action<IList<Profile>, MemoryState> onDone)
-	{
-		if (onDone != null && IsEnabled())
-		{
-			onDoneCallback = onDone;
-			Native.SetStorageType(1);
-			Native.SetFixedBufferCap(33554432u, 8388608u);
-			Native.StartContinuousProfiling(maxStackDepth);
-			isContinuous = true;
-		}
-	}
-
-	public static void StopContinuousRecording()
-	{
-		Native.StopContinuousProfiling();
-		onDoneCallback = null;
-	}
-
-	public static void ResumeContinuousRecording()
-	{
-		Native.ResumeContinuousProfiling();
-	}
-
-	public static void ReleaseResources()
-	{
-		Native.ReleaseResources();
-	}
-
-	public static bool IsEnabled()
-	{
-		return canBeActivated;
-	}
-
-	private unsafe static void OnFrameEnd()
-	{
-		if (!Native.OnFrameEnd())
-		{
-			return;
-		}
-		List<Profile> list = null;
-		Native.GetData(out var profiles, out var count);
-		list = new List<Profile>(count);
-		for (byte b = 0; b < count; b++)
-		{
-			if (profiles[(int)b]->WriteEnd != 0)
-			{
-				list.Add(*profiles[(int)b]);
-			}
-		}
-		Native.GetMemoryUsage(out var state);
-		MemoryState arg = *state;
-		onDoneCallback(list, arg);
-		if (!isContinuous)
-		{
-			onDoneCallback = null;
-		}
-	}
-
-	public static TimeSpan TimestampToTimespan(long stamp)
-	{
-		return TimeSpan.FromMilliseconds((double)stamp / 1000000.0);
-	}
-
-	public static long TimestampToMicros(long stamp)
-	{
-		return stamp / 1000;
-	}
-
-	public unsafe static void AppendNameTo(Native.MonoMethod* method, StringBuilder builder)
-	{
-		for (byte* ptr = method->Class->Image->AssemblyName; *ptr != 0; ptr++)
-		{
-			builder.Append((char)(*ptr));
-		}
-		builder.Append('!');
-		for (byte* ptr = method->Class->Name; *ptr != 0; ptr++)
-		{
-			builder.Append((char)(*ptr));
-		}
-		builder.Append("::");
-		for (byte* ptr = method->Name; *ptr != 0; ptr++)
-		{
-			builder.Append((char)(*ptr));
-		}
-	}
-
-	public unsafe static void AppendNameTo(Native.MonoMethod* method, ProfileExporter.JSON.StringStream builder)
-	{
-		for (byte* ptr = method->Class->Image->AssemblyName; *ptr != 0; ptr++)
-		{
-			builder.Append((char)(*ptr));
-		}
-		builder.Append('!');
-		for (byte* ptr = method->Class->Name; *ptr != 0; ptr++)
-		{
-			builder.Append((char)(*ptr));
-		}
-		builder.Append("::");
-		for (byte* ptr = method->Name; *ptr != 0; ptr++)
-		{
-			builder.Append((char)(*ptr));
-		}
-	}
-
-	public unsafe static void SerializeNameTo(Native.MonoMethod* method, MemoryStream stream)
-	{
-		long position = stream.Position;
-		ushort num = 0;
-		stream.WriteByte(0);
-		stream.WriteByte(0);
-		byte* ptr = method->Class->Image->AssemblyName;
-		while (*ptr != 0)
-		{
-			stream.WriteByte(*ptr);
-			ptr++;
-			num++;
-		}
-		stream.WriteByte(33);
-		num++;
-		ptr = method->Class->Name;
-		while (*ptr != 0)
-		{
-			stream.WriteByte(*ptr);
-			ptr++;
-			num++;
-		}
-		stream.WriteByte(58);
-		stream.WriteByte(58);
-		num += 2;
-		ptr = method->Name;
-		while (*ptr != 0)
-		{
-			stream.WriteByte(*ptr);
-			ptr++;
-			num++;
-		}
-		byte[] buffer = stream.GetBuffer();
-		buffer[position] = (byte)(num >> 8);
-		buffer[position + 1] = (byte)num;
-	}
-
-	public unsafe static void AppendNameTo(Alloc alloc, StringBuilder builder)
-	{
-		for (byte* ptr = alloc.Class->Image->AssemblyName; *ptr != 0; ptr++)
-		{
-			builder.Append((char)(*ptr));
-		}
-		builder.Append('!');
-		for (byte* ptr = alloc.Class->Name; *ptr != 0; ptr++)
-		{
-			char c = (char)(*ptr);
-			builder.Append(c);
-			if (alloc.FlatArraySize != 0 && c == '[')
-			{
-				builder.Append(alloc.FlatArraySize);
-			}
-		}
-	}
-
-	public unsafe static void AppendNameTo(Alloc alloc, ProfileExporter.JSON.StringStream builder)
-	{
-		for (byte* ptr = alloc.Class->Image->AssemblyName; *ptr != 0; ptr++)
-		{
-			builder.Append((char)(*ptr));
-		}
-		builder.Append('!');
-		for (byte* ptr = alloc.Class->Name; *ptr != 0; ptr++)
-		{
-			char c = (char)(*ptr);
-			builder.Append(c);
-			if (alloc.FlatArraySize != 0 && c == '[')
-			{
-				builder.Append(alloc.FlatArraySize);
-			}
-		}
-	}
-
-	public unsafe static void SerializeNameTo(Alloc alloc, MemoryStream stream)
-	{
-		long position = stream.Position;
-		ushort num = 0;
-		stream.WriteByte(0);
-		stream.WriteByte(0);
-		byte* ptr = alloc.Class->Image->AssemblyName;
-		while (*ptr != 0)
-		{
-			stream.WriteByte(*ptr);
-			ptr++;
-			num++;
-		}
-		stream.WriteByte(33);
-		num++;
-		ptr = alloc.Class->Name;
-		while (*ptr != 0)
-		{
-			stream.WriteByte(*ptr);
-			ptr++;
-			num++;
-		}
-		byte[] buffer = stream.GetBuffer();
-		buffer[position] = (byte)(num >> 8);
-		buffer[position + 1] = (byte)num;
-	}
-
-	public static int GetMainThreadId()
-	{
-		return mainThreadId;
-	}
-}
-
-
-using System.Runtime.InteropServices;
-
-[StructLayout(LayoutKind.Sequential, Pack = 1, Size = 9)]
-public struct Mark
-{
-	public enum Type : byte
-	{
-		Sync,
-		Enter,
-		Exit,
-		Exception,
-		Alloc,
-		GCBegin,
-		GCEnd,
-		AllocWithStack
-	}
-
-	public long Timestamp;
-
-	public Type Event;
-}
-
-
-public enum Type : byte
-{
-	Sync,
-	Enter,
-	Exit,
-	Exception,
-	Alloc,
-	GCBegin,
-	GCEnd,
-	AllocWithStack
-}
-
-
-public struct Alloc
-{
-	public unsafe Native.MonoClass* Class;
-
-	public unsafe Native.MonoMethod* LastMethod;
-
-	public uint AlignedSize;
-
-	public uint FlatArraySize;
-}
-
-
-public struct Profile
-{
-	public unsafe byte* Data;
-
-	private uint WriteInd;
-
-	public uint Capacity;
-
-	public uint WriteEnd;
-
-	public int ThreadId;
-
-	public long Timestamp;
-}
-
-
-using System.Runtime.InteropServices;
-
-[StructLayout(LayoutKind.Sequential, Size = 64)]
-public struct MemoryReading
-{
-	public long Timestamp;
-
-	public ulong WorkingSet;
-
-	public ulong VirtualSet;
-}
-
-
-public struct MemoryState
-{
-	public unsafe MemoryReading* Readings;
-
-	public uint Created;
-
-	public uint Capacity;
-}
-
-
-public enum NotifyMetric : byte
-{
-	TotalAllocCount,
-	TotalMem,
-	MainAllocCount,
-	MainMem,
-	WorkerAllocCount,
-	WorkerMem,
-	Count
 }
 
 

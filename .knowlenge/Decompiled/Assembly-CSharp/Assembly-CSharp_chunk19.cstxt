@@ -1548,28 +1548,28 @@ public class LegStepAnimatingParameters
 	[FPD_FixedCurveWindow(0f, 0f, 1f, 1.25f, 0.4f, 0.5f, 1f, 1f)]
 	public AnimationCurve MoveToGoalCurve = AnimationCurve.EaseInOut(0f, 0f, 1f, 1f);
 
-	[FPD_FixedCurveWindow(0f, -1f, 1f, 1f, 0.4f, 0.6f, 0.9f, 1f)]
 	[Tooltip("Making foot motion move towards target not in full linear straight towards target motion but adding a bit curve back (positive value) or forward (negative values) making movement a bit more natural")]
+	[FPD_FixedCurveWindow(0f, -1f, 1f, 1f, 0.4f, 0.6f, 0.9f, 1f)]
 	public AnimationCurve SpherizeTrack = AnimationCurve.EaseInOut(0f, 0f, 1f, 0f);
 
 	[Range(0f, 2f)]
 	public float SpherizePower = 0.3f;
 
-	[Range(0f, 1f)]
 	[Tooltip("Minimum leg raise height. If distance of target step animation is small, then foot raise is smaller - down to this minimum raise value.")]
+	[Range(0f, 1f)]
 	public float MinFootRaise = 0.1f;
 
-	[Range(0f, 1f)]
 	[Tooltip("Maximum leg raise height. If distance of target step animation is very big, then foot raise is bigger - up to this maximum raise value.")]
+	[Range(0f, 1f)]
 	public float MaxFootRaise = 0.4f;
 
 	[Tooltip("Raise height step animation curve evaluated on step animation duration.")]
 	[FPD_FixedCurveWindow(0f, 0f, 1f, 1f, 0.5f, 1f, 0.5f, 1f)]
 	public AnimationCurve RaiseYAxisCurve;
 
-	[Space(3f)]
 	[Tooltip("Allowing to speed up leg adjusting animation when leg is getting stretched, when opposite leg is requesting adjustement or when main character is rotating in place quickly")]
 	[Range(0f, 1f)]
+	[Space(3f)]
 	public float AllowSpeedups = 0.4f;
 
 	[Tooltip("You can allow to use opposite leg before idle glue leg adjustement finishes")]
@@ -1580,8 +1580,8 @@ public class LegStepAnimatingParameters
 	[FPD_FixedCurveWindow(0f, 0f, 1f, 1f, 1f, 0.6f, 0.6f, 1f)]
 	public AnimationCurve PushHipsOnMoveCurve;
 
-	[FPD_FixedCurveWindow(0f, -1f, 1f, 1f, 0f, 1f, 1f, 1f)]
 	[Tooltip("Extra foot ankle rotation animation curve evaluated on step animation duration.")]
+	[FPD_FixedCurveWindow(0f, -1f, 1f, 1f, 0f, 1f, 1f, 1f)]
 	public AnimationCurve FootRotationCurve;
 
 	public void RefreshDefaultCurves()
@@ -6513,8 +6513,8 @@ public class FGroundFitter_Movement : MonoBehaviour
 	[Tooltip("Protecting from going through walls when slope is very big and ground fitter is jumping into it")]
 	public bool NotFallingThrough;
 
-	[Header("(experimental)")]
 	[Tooltip("You need collider and rigidbody on object to make it work right - ALSO CHANGE YOUR CAMERA UPDATE CLOCK TO FIXED UPDATE AND USE TIME.fixedDeltaTime - ! For now it can cause errors when jumping, character can go through floor sometimes ! - Will be upgraded in future versions")]
+	[Header("(experimental)")]
 	public bool UsePhysics;
 
 	[Tooltip("Disabling translating object from code and running animation without need to hold minimum movement speed")]
@@ -6570,12 +6570,12 @@ public class FGroundFitter_Movement : MonoBehaviour
 
 	private float? yAdjustPos;
 
-	[Tooltip("If you want to set some animator parameter during being grounded")]
 	[HideInInspector]
+	[Tooltip("If you want to set some animator parameter during being grounded")]
 	public string SetIsGroundedParam = "";
 
-	[Tooltip("If you want to set some animator parameter during accelerating moving")]
 	[HideInInspector]
+	[Tooltip("If you want to set some animator parameter during accelerating moving")]
 	public string SetIsMovingParam = "";
 
 	[HideInInspector]
@@ -7260,17 +7260,17 @@ public abstract class FGroundFitter_Base : MonoBehaviour
 	[Range(1f, 30f)]
 	public float FittingSpeed = 6f;
 
-	[Tooltip("Smoothing whole rotation motion")]
 	[Range(0f, 1f)]
+	[Tooltip("Smoothing whole rotation motion")]
 	public float TotalSmoother;
 
-	[HideInInspector]
 	[Space(3f)]
 	[Tooltip("Transform which will be rotated by script, usually it can be the same transform as component's")]
+	[HideInInspector]
 	public Transform TransformToRotate;
 
-	[Tooltip("If you want this script only to change your object's rotation and do nothing with position, untoggle this")]
 	[Space(3f)]
+	[Tooltip("If you want this script only to change your object's rotation and do nothing with position, untoggle this")]
 	public bool GlueToGround;
 
 	[Header("> Tweaking Settings <", order = 0)]
@@ -7292,9 +7292,9 @@ public abstract class FGroundFitter_Base : MonoBehaviour
 	[Range(0f, 90f)]
 	public float MaxHorizontalRotation = 90f;
 
-	[Header("> Advanced settings <", order = 0)]
-	[Space(4f, order = 1)]
 	[Tooltip("We should cast raycast from position little higher than foots of your game object")]
+	[Space(4f, order = 1)]
+	[Header("> Advanced settings <", order = 0)]
 	public float RaycastHeightOffset = 0.5f;
 
 	[Tooltip("How far ray should cast to check if ground is under feet")]
@@ -7333,8 +7333,8 @@ public abstract class FGroundFitter_Base : MonoBehaviour
 	[Range(0f, 10f)]
 	public float ZoneCastBias;
 
-	[Tooltip("More precision = more raycasts = lower performance")]
 	[Range(0f, 1f)]
+	[Tooltip("More precision = more raycasts = lower performance")]
 	public float ZoneCastPrecision = 0.25f;
 
 	[NonSerialized]
@@ -7746,8 +7746,8 @@ public abstract class FGroundFitter_Base_RootMotion : FGroundFitter_Base
 	[HideInInspector]
 	protected Transform parentTransform;
 
-	[HideInInspector]
 	[SerializeField]
+	[HideInInspector]
 	protected CharacterController optionalCharContr;
 
 	[HideInInspector]
@@ -13280,6 +13280,8 @@ public class Map : BasePlayerHandler<AppEmpty>
 
 	private static string _background;
 
+	public static byte[] ImageData => _imageData;
+
 	protected override double TokenCost => 5.0;
 
 	public override void Execute()
@@ -13733,7 +13735,6 @@ public enum CameraRendererState
 
 
 using System;
-using System.Buffers;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using CompanionServer;
@@ -13993,8 +13994,8 @@ public class CameraRenderer : IPooled
 				state = CameraRendererState.Invalid;
 				return;
 			}
-			int minimumLength = _sampleCount * 4;
-			byte[] array = ArrayPool<byte>.Shared.Rent(minimumLength);
+			int num = _sampleCount * 4;
+			byte[] array = Shared.ArrayPool.Rent(num);
 			List<int> hitColliderIds = Pool.Get<List<int>>();
 			List<int> foundColliderIds = Pool.Get<List<int>>();
 			int count = _task.ExtractRayData(array, hitColliderIds, foundColliderIds);
@@ -14002,16 +14003,16 @@ public class CameraRenderer : IPooled
 			UpdateCollidersMap(foundColliderIds);
 			Pool.FreeUnmanaged<int>(ref hitColliderIds);
 			Pool.FreeUnmanaged<int>(ref foundColliderIds);
-			ulong num = rc.ControllingViewerId?.SteamId ?? 0;
-			if (num == 0L)
+			ulong num2 = rc.ControllingViewerId?.SteamId ?? 0;
+			if (num2 == 0L)
 			{
 				_cachedViewerSteamId = null;
 				_cachedViewer = null;
 			}
-			else if (num != _cachedViewerSteamId)
+			else if (num2 != _cachedViewerSteamId)
 			{
-				_cachedViewerSteamId = num;
-				_cachedViewer = BasePlayer.FindByID(num) ?? BasePlayer.FindSleeping(num);
+				_cachedViewerSteamId = num2;
+				_cachedViewer = BasePlayer.FindByID(num2) ?? BasePlayer.FindSleeping(num2);
 			}
 			float distance = (_cachedViewer.IsValid() ? Mathf.Clamp01(Vector3.Distance(((Component)_cachedViewer).transform.position, ((Component)entity).transform.position) / rc.MaxRange) : 0f);
 			Vector3 position = eyes.position;
@@ -14034,19 +14035,19 @@ public class CameraRenderer : IPooled
 					continue;
 				}
 				Vector3 position2 = ((Component)value).transform.position;
-				float num2 = Vector3.Distance(position2, position);
-				if (num2 > (float)entityMaxDistance)
+				float num3 = Vector3.Distance(position2, position);
+				if (num3 > (float)entityMaxDistance)
 				{
 					continue;
 				}
 				string name = null;
 				if (value is BasePlayer basePlayer)
 				{
-					if (num2 > (float)playerMaxDistance)
+					if (num3 > (float)playerMaxDistance)
 					{
 						continue;
 					}
-					if (num2 <= (float)playerNameMaxDistance)
+					if (num3 <= (float)playerNameMaxDistance)
 					{
 						name = basePlayer.displayName;
 					}
@@ -14327,8 +14328,8 @@ public struct RaycastRaySetupJob : IJobParallelFor
 	[ReadOnly]
 	public NativeArray<int2> samplePositions;
 
-	[WriteOnly]
 	[NativeMatchesParallelForLength]
+	[WriteOnly]
 	public NativeArray<RaycastCommand> raycastCommands;
 
 	public void Execute(int index)
@@ -14396,8 +14397,8 @@ public struct RaycastRayProcessingJob : IJobParallelFor
 	[NativeDisableParallelForRestriction]
 	public NativeArray<int> colliderHits;
 
-	[NativeMatchesParallelForLength]
 	[WriteOnly]
+	[NativeMatchesParallelForLength]
 	public NativeArray<int> outputs;
 
 	[NativeDisableParallelForRestriction]
@@ -15506,6 +15507,7 @@ public struct FindValidIndicesJob : IJob
 
 
 using Unity.Collections;
+using UnityEngine;
 
 public static class NativeArrayEx
 {
@@ -15529,18 +15531,18 @@ public static class NativeArrayEx
 		count--;
 	}
 
-	public static void Expand<T>(this ref NativeArray<T> array, int newCapacity, NativeArrayOptions options = 1, bool copyContents = true) where T : unmanaged
+	public static void Expand<T>(this ref NativeArray<T> array, int newCapacity, NativeArrayOptions options = 1, bool copyContents = true, bool usePowerOfTwo = false) where T : unmanaged
 	{
-		//IL_000d: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0039: Unknown result type (might be due to invalid IL or missing references)
-		//IL_003a: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0028: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0019: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0045: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0046: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0034: Unknown result type (might be due to invalid IL or missing references)
 		if (newCapacity <= array.Length)
 		{
 			return;
 		}
 		NativeArray<T> val = default(NativeArray<T>);
-		val..ctor(newCapacity, (Allocator)4, options);
+		val..ctor(usePowerOfTwo ? Mathf.NextPowerOfTwo(newCapacity) : newCapacity, (Allocator)4, options);
 		if (array.IsCreated)
 		{
 			if (copyContents)
@@ -15582,13 +15584,13 @@ public static class NativeListEx
 {
 	public static void Expand<T>(this ref NativeList<T> list, int newCapacity, bool copyContents = true) where T : unmanaged
 	{
-		//IL_003a: Unknown result type (might be due to invalid IL or missing references)
-		//IL_003f: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0044: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0026: Unknown result type (might be due to invalid IL or missing references)
-		//IL_002b: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0030: Unknown result type (might be due to invalid IL or missing references)
-		if (newCapacity > list.Capacity)
+		//IL_0042: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0047: Unknown result type (might be due to invalid IL or missing references)
+		//IL_004c: Unknown result type (might be due to invalid IL or missing references)
+		//IL_002e: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0033: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0038: Unknown result type (might be due to invalid IL or missing references)
+		if (!list.IsCreated || newCapacity > list.Capacity)
 		{
 			if (list.IsCreated)
 			{
@@ -17559,13 +17561,13 @@ public class CellMeshAllocator
 
 	public void ExpandData()
 	{
-		//IL_0067: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0085: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00a3: Unknown result type (might be due to invalid IL or missing references)
+		//IL_006b: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0089: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00a7: Unknown result type (might be due to invalid IL or missing references)
 		NativeArrayEx.Expand(ref Cells, Cells.Length * 2, (NativeArrayOptions)1);
 		int newCapacity = Cells.Length * 32;
 		NativeArrayEx.Expand(ref CullData, newCapacity, (NativeArrayOptions)1);
-		PositionData.Expand<float4x4>(newCapacity, (NativeArrayOptions)1, copyContents: true);
+		PositionData.Expand<float4x4>(newCapacity, (NativeArrayOptions)1, copyContents: true, usePowerOfTwo: false);
 		NativeArrayEx.Expand(ref OverrideArray, newCapacity, (NativeArrayOptions)1);
 		CullingDataBuffer.Expand(newCapacity);
 		CullingDataBuffer.SetData(CullData);
@@ -17763,7 +17765,7 @@ public class CullingManager
 
 	public void EnsureCapacity(int rendererCount)
 	{
-		//IL_003b: Unknown result type (might be due to invalid IL or missing references)
+		//IL_003c: Unknown result type (might be due to invalid IL or missing references)
 		if (RenderSlicesArray.Length < rendererCount + 1)
 		{
 			int newCapacity = Mathf.ClosestPowerOfTwo(rendererCount) * 2;
@@ -18147,7 +18149,7 @@ public class DrawCallManager
 
 	private void EnsureDrawCallCapcity()
 	{
-		//IL_0057: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0058: Unknown result type (might be due to invalid IL or missing references)
 		if (DrawCalls.Count > IndirectArgCapacity)
 		{
 			IndirectArgCapacity = Mathf.ClosestPowerOfTwo(DrawCalls.Count) * 2;
@@ -19318,6 +19320,494 @@ public struct CullingParameters
 }
 
 
+using Unity.Burst;
+using Unity.Collections;
+using Unity.Jobs;
+using UnityEngine;
+
+[BurstCompile(/*Could not decode attribute arguments.*/)]
+internal struct FillFalseJobDefer : IJobParallelForDefer
+{
+	[ReadOnly]
+	public NativeList<Ray> rays;
+
+	public NativeArray<bool> HitResults;
+
+	public void Execute(int index)
+	{
+		HitResults[index] = false;
+	}
+}
+
+
+using System;
+using Unity.Burst;
+using Unity.Collections;
+using Unity.Jobs;
+using UnityEngine;
+
+[BurstCompile(/*Could not decode attribute arguments.*/)]
+internal struct AdjustByTopologyJob : IJobParallelForDefer
+{
+	[ReadOnly]
+	public NativeList<Ray> rays;
+
+	public NativeArray<bool> hitResults;
+
+	public NativeArray<Vector3> hitNormals;
+
+	public ReadOnly<Vector3> hitPositions;
+
+	[ReadOnly]
+	public NativeArray<int> TopologyData;
+
+	[ReadOnly]
+	public int TopologyRes;
+
+	[ReadOnly]
+	public Vector2 DataOrigin;
+
+	[ReadOnly]
+	public Vector2 DataScale;
+
+	public void Execute(int index)
+	{
+		//IL_0016: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0027: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0050: Unknown result type (might be due to invalid IL or missing references)
+		if (hitResults[index])
+		{
+			hitNormals[index] = Vector3.up;
+			float num = (hitPositions[index].x - DataOrigin.x) * DataScale.x;
+			float num2 = (hitPositions[index].z - DataOrigin.y) * DataScale.y;
+			int num3 = Math.Clamp((int)(num * (float)TopologyRes), 0, TopologyRes - 1);
+			int num4 = Math.Clamp((int)(num2 * (float)TopologyRes), 0, TopologyRes - 1) * TopologyRes + num3;
+			hitResults[index] = ((TopologyData[num4] & 0x80) | 0x100) != 0;
+		}
+	}
+}
+
+
+using Unity.Burst;
+using Unity.Collections;
+using Unity.Jobs;
+using UnityEngine;
+
+[BurstCompile(/*Could not decode attribute arguments.*/)]
+internal struct SmallDisplacementPlaneTraceJob : IJobParallelForDefer
+{
+	public Plane SeaPlane;
+
+	[ReadOnly]
+	public NativeList<Ray> Rays;
+
+	public ReadOnly<float> MaxDists;
+
+	[WriteOnly]
+	public NativeArray<bool> HitResults;
+
+	[WriteOnly]
+	public NativeArray<Vector3> HitPositions;
+
+	public void Execute(int index)
+	{
+		//IL_0007: Unknown result type (might be due to invalid IL or missing references)
+		//IL_000c: Unknown result type (might be due to invalid IL or missing references)
+		//IL_001c: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0021: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0028: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0057: Unknown result type (might be due to invalid IL or missing references)
+		//IL_003d: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0042: Unknown result type (might be due to invalid IL or missing references)
+		Ray val = Rays[index];
+		float num = MaxDists[index];
+		bool flag = false;
+		Vector3 val2 = Vector3.zero;
+		float num2 = default(float);
+		if (((Plane)(ref SeaPlane)).Raycast(val, ref num2) && num2 < num)
+		{
+			flag = true;
+			val2 = ((Ray)(ref val)).GetPoint(num2);
+		}
+		HitResults[index] = flag;
+		HitPositions[index] = val2;
+	}
+}
+
+
+using Rust.Water5;
+using Unity.Burst;
+using Unity.Collections;
+using Unity.Jobs;
+using Unity.Mathematics;
+using UnityEngine;
+
+[BurstCompile(/*Could not decode attribute arguments.*/)]
+internal struct OceanTraceJob : IJobParallelForDefer
+{
+	public const int maxSteps = 16;
+
+	public const int maxBinarySteps = 16;
+
+	public const float intersectionThreshold = 0.1f;
+
+	public const float seaLevel = 0f;
+
+	public float MaxDisplacement;
+
+	[ReadOnly]
+	public NativeList<Ray> Rays;
+
+	public ReadOnly<float> MaxDists;
+
+	[WriteOnly]
+	public NativeArray<bool> HitResults;
+
+	[WriteOnly]
+	public NativeArray<Vector3> HitPositions;
+
+	public float OneOverOctave0Scale;
+
+	[ReadOnly]
+	[NativeDisableParallelForRestriction]
+	public NativeOceanDisplacementShort3 SimData;
+
+	public int Spectrum0;
+
+	public int Spectrum1;
+
+	public int Frame0;
+
+	public int Frame1;
+
+	public float spectrumBlend;
+
+	public float frameBlend;
+
+	public TerrainHeightMap.HeightMapQueryStructure HeightMapQueryStructure;
+
+	public TerrainTexturing.ShoreVectorQueryStructure ShoreVectorQueryStructure;
+
+	public float distanceAttenuationFactor;
+
+	public float depthAttenuationFactor;
+
+	public void Execute(int index)
+	{
+		//IL_0007: Unknown result type (might be due to invalid IL or missing references)
+		//IL_000c: Unknown result type (might be due to invalid IL or missing references)
+		//IL_003a: Unknown result type (might be due to invalid IL or missing references)
+		Ray ray = Rays[index];
+		float maxDist = MaxDists[index];
+		Vector3 result;
+		bool flag = Trace(in ray, maxDist, out result);
+		HitResults[index] = flag;
+		HitPositions[index] = result;
+	}
+
+	private bool Trace(in Ray ray, float maxDist, out Vector3 result)
+	{
+		//IL_0009: Unknown result type (might be due to invalid IL or missing references)
+		//IL_000e: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0013: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0018: Unknown result type (might be due to invalid IL or missing references)
+		//IL_001a: Unknown result type (might be due to invalid IL or missing references)
+		//IL_001f: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0023: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0051: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0056: Unknown result type (might be due to invalid IL or missing references)
+		//IL_005a: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0035: Unknown result type (might be due to invalid IL or missing references)
+		//IL_007e: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0083: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0087: Unknown result type (might be due to invalid IL or missing references)
+		//IL_008c: Unknown result type (might be due to invalid IL or missing references)
+		//IL_008e: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0093: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0097: Unknown result type (might be due to invalid IL or missing references)
+		//IL_009c: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00b0: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00c5: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00c6: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00cb: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0067: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0044: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0049: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0101: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00da: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00e6: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00eb: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00ec: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00f1: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0071: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0076: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0115: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0129: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0135: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0138: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0139: Unknown result type (might be due to invalid IL or missing references)
+		//IL_013e: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0143: Unknown result type (might be due to invalid IL or missing references)
+		//IL_015a: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0164: Unknown result type (might be due to invalid IL or missing references)
+		//IL_017b: Unknown result type (might be due to invalid IL or missing references)
+		//IL_017e: Unknown result type (might be due to invalid IL or missing references)
+		//IL_017f: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0184: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0189: Unknown result type (might be due to invalid IL or missing references)
+		//IL_014a: Unknown result type (might be due to invalid IL or missing references)
+		//IL_014f: Unknown result type (might be due to invalid IL or missing references)
+		//IL_01ca: Unknown result type (might be due to invalid IL or missing references)
+		//IL_01da: Unknown result type (might be due to invalid IL or missing references)
+		//IL_01ee: Unknown result type (might be due to invalid IL or missing references)
+		//IL_01f7: Unknown result type (might be due to invalid IL or missing references)
+		//IL_01f8: Unknown result type (might be due to invalid IL or missing references)
+		//IL_01fa: Unknown result type (might be due to invalid IL or missing references)
+		//IL_01fe: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0203: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0207: Unknown result type (might be due to invalid IL or missing references)
+		//IL_020c: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0211: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0216: Unknown result type (might be due to invalid IL or missing references)
+		//IL_01c2: Unknown result type (might be due to invalid IL or missing references)
+		//IL_01c3: Unknown result type (might be due to invalid IL or missing references)
+		//IL_021d: Unknown result type (might be due to invalid IL or missing references)
+		//IL_021f: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0221: Unknown result type (might be due to invalid IL or missing references)
+		//IL_022b: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0230: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0232: Unknown result type (might be due to invalid IL or missing references)
+		//IL_023a: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0285: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0286: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0255: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0256: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0250: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0251: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0258: Unknown result type (might be due to invalid IL or missing references)
+		float num = 0f - MaxDisplacement;
+		Ray val = ray;
+		Vector3 point = ((Ray)(ref val)).GetPoint(maxDist);
+		val = ray;
+		if (((Ray)(ref val)).origin.y > MaxDisplacement && point.y > MaxDisplacement)
+		{
+			result = Vector3.zero;
+			return false;
+		}
+		val = ray;
+		if (((Ray)(ref val)).origin.y < num && point.y < num)
+		{
+			result = Vector3.zero;
+			return false;
+		}
+		val = ray;
+		Vector3 val2 = ((Ray)(ref val)).origin;
+		val = ray;
+		Vector3 direction = ((Ray)(ref val)).direction;
+		float num2 = 0f;
+		float num3 = 0f;
+		float num4 = 2f / (math.abs(direction.y) + 1f);
+		result = val2;
+		if (direction.y <= -0.99f)
+		{
+			result.y = GetHeight(val2);
+			return math.lengthsq(float3.op_Implicit(result - val2)) < maxDist * maxDist;
+		}
+		if (val2.y >= MaxDisplacement + 0f)
+		{
+			num3 = (num2 = (0f - (val2.y - MaxDisplacement - 0f)) / direction.y);
+			val2 += num2 * direction;
+			if (num3 >= maxDist)
+			{
+				result = Vector3.zero;
+				return false;
+			}
+		}
+		int num5 = 0;
+		while (true)
+		{
+			float height = GetHeight(val2);
+			num2 = num4 * Mathf.Abs(val2.y - height - 0f);
+			val2 += num2 * direction;
+			num3 += num2;
+			if (num5 >= 16 || num2 < 0.1f)
+			{
+				break;
+			}
+			if (num3 >= maxDist)
+			{
+				return false;
+			}
+			num5++;
+		}
+		if (num2 < 0.1f && num3 >= 0f)
+		{
+			result = val2;
+			return true;
+		}
+		if (direction.y < 0f)
+		{
+			num2 = (0f - (val2.y + MaxDisplacement - 0f)) / direction.y;
+			Vector3 val3 = val2;
+			Vector3 val4 = val2;
+			float num6 = num2;
+			val = ray;
+			Vector3 val5 = val4 + num6 * ((Ray)(ref val)).direction;
+			for (int i = 0; i < 16; i++)
+			{
+				val2 = (val3 + val5) * 0.5f;
+				float height2 = GetHeight(val2);
+				if (val2.y - height2 - 0f > 0f)
+				{
+					val3 = val2;
+				}
+				else
+				{
+					val5 = val2;
+				}
+				if (math.abs(val2.y - height2) < 0.1f)
+				{
+					val2.y = height2;
+					break;
+				}
+			}
+			result = val2;
+			return true;
+		}
+		return false;
+	}
+
+	private float GetHeight(Vector3 point)
+	{
+		//IL_0001: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0008: Unknown result type (might be due to invalid IL or missing references)
+		return GetHeightRaw(point) * GetHeightAttenuation(point);
+	}
+
+	public float GetHeightAttenuation(Vector3 position)
+	{
+		//IL_0044: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0050: Unknown result type (might be due to invalid IL or missing references)
+		//IL_006d: Unknown result type (might be due to invalid IL or missing references)
+		//IL_007a: Unknown result type (might be due to invalid IL or missing references)
+		float x = HeightMapQueryStructure.TerrainPosition.x;
+		float z = HeightMapQueryStructure.TerrainPosition.z;
+		float x2 = HeightMapQueryStructure.TerrainOneOverSize.x;
+		float z2 = HeightMapQueryStructure.TerrainOneOverSize.z;
+		float num = (position.x - x) * x2;
+		float num2 = (position.z - z) * z2;
+		Vector2 uv = default(Vector2);
+		((Vector2)(ref uv))..ctor(num, num2);
+		float coarseDistanceToShore = ShoreVectorQueryStructure.GetCoarseDistanceToShore(uv);
+		float heightFast = HeightMapQueryStructure.GetHeightFast(uv);
+		float num3 = Mathf.Clamp01(coarseDistanceToShore / distanceAttenuationFactor);
+		float num4 = Mathf.Clamp01(Mathf.Abs(heightFast) / depthAttenuationFactor);
+		return num3 * num4;
+	}
+
+	private float GetHeightRaw(Vector3 position)
+	{
+		//IL_0000: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0005: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0007: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0008: Unknown result type (might be due to invalid IL or missing references)
+		//IL_000d: Unknown result type (might be due to invalid IL or missing references)
+		//IL_000f: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0010: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0011: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0016: Unknown result type (might be due to invalid IL or missing references)
+		//IL_001b: Unknown result type (might be due to invalid IL or missing references)
+		//IL_001d: Unknown result type (might be due to invalid IL or missing references)
+		//IL_001e: Unknown result type (might be due to invalid IL or missing references)
+		//IL_001f: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0024: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0029: Unknown result type (might be due to invalid IL or missing references)
+		//IL_002b: Unknown result type (might be due to invalid IL or missing references)
+		//IL_002c: Unknown result type (might be due to invalid IL or missing references)
+		//IL_002d: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0032: Unknown result type (might be due to invalid IL or missing references)
+		Vector3 zero = Vector3.zero;
+		zero = GetDisplacement(position);
+		zero = GetDisplacement(position - zero);
+		zero = GetDisplacement(position - zero);
+		return GetDisplacement(position - zero).y;
+	}
+
+	private Vector3 GetDisplacement(Vector3 position)
+	{
+		//IL_0000: Unknown result type (might be due to invalid IL or missing references)
+		//IL_000e: Unknown result type (might be due to invalid IL or missing references)
+		//IL_001f: Unknown result type (might be due to invalid IL or missing references)
+		float normX = position.x * OneOverOctave0Scale;
+		float normZ = position.z * OneOverOctave0Scale;
+		return GetDisplacement(normX, normZ);
+	}
+
+	private Vector3 GetDisplacement(float normX, float normZ)
+	{
+		//IL_009f: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00a9: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00ae: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00b5: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00ba: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00c1: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00c6: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00c8: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00cd: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00cf: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00d5: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00da: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00dc: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00e1: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00e3: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00e9: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00ee: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00f0: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00f4: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00f9: Unknown result type (might be due to invalid IL or missing references)
+		normX -= math.floor(normX);
+		normZ -= math.floor(normZ);
+		float num = normX * 256f - 0.5f;
+		float num2 = normZ * 256f - 0.5f;
+		int num3 = (int)math.floor(num);
+		int num4 = (int)math.floor(num2);
+		float num5 = num - (float)num3;
+		float num6 = num2 - (float)num4;
+		int num7 = num3 % 256;
+		int num8 = num4 % 256;
+		int x = (num7 + 256) % 256;
+		int z = (num8 + 256) % 256;
+		int x2 = (num7 + 1 + 256) % 256;
+		int z2 = (num8 + 1 + 256) % 256;
+		Vector3 displacementFromSimData = GetDisplacementFromSimData(x, z);
+		Vector3 displacementFromSimData2 = GetDisplacementFromSimData(x2, z);
+		Vector3 displacementFromSimData3 = GetDisplacementFromSimData(x, z2);
+		Vector3 displacementFromSimData4 = GetDisplacementFromSimData(x2, z2);
+		float3 val = math.lerp(float3.op_Implicit(displacementFromSimData), float3.op_Implicit(displacementFromSimData2), num5);
+		float3 val2 = math.lerp(float3.op_Implicit(displacementFromSimData3), float3.op_Implicit(displacementFromSimData4), num5);
+		return float3.op_Implicit(math.lerp(val, val2, num6));
+	}
+
+	private Vector3 GetDisplacementFromSimData(int x, int z)
+	{
+		//IL_0022: Unknown result type (might be due to invalid IL or missing references)
+		//IL_003f: Unknown result type (might be due to invalid IL or missing references)
+		//IL_004a: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0067: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0084: Unknown result type (might be due to invalid IL or missing references)
+		//IL_008f: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0094: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0095: Unknown result type (might be due to invalid IL or missing references)
+		//IL_009c: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00a1: Unknown result type (might be due to invalid IL or missing references)
+		int z2 = x * 256 + z;
+		float3 val = math.lerp((float3)SimData[Spectrum0, Frame0, z2], (float3)SimData[Spectrum1, Frame0, z2], spectrumBlend);
+		float3 val2 = math.lerp((float3)SimData[Spectrum0, Frame1, z2], (float3)SimData[Spectrum1, Frame1, z2], spectrumBlend);
+		return float3.op_Implicit(math.lerp(val, val2, frameBlend));
+	}
+}
+
+
 using TerrainTopologyMapJobs;
 using Unity.Burst;
 using Unity.Collections;
@@ -19777,8 +20267,8 @@ using Unity.Mathematics;
 [BurstCompile(/*Could not decode attribute arguments.*/)]
 internal struct TileCalculateAngleMap : IJobParallelFor
 {
-	[WriteOnly]
 	[NativeDisableParallelForRestriction]
+	[WriteOnly]
 	public NativeArray<float> AngleMap;
 
 	[ReadOnly]
@@ -20050,8 +20540,8 @@ internal struct RefillOceanJob : IJobParallelFor
 
 	public ReadOnly<float> HeightMap;
 
-	[NativeDisableParallelForRestriction]
 	[WriteOnly]
+	[NativeDisableParallelForRestriction]
 	public NativeArray<float> WaterMap;
 
 	public float OceanLevel;
@@ -20931,8 +21421,8 @@ public struct CheckBoundsJobIndirect : IJob
 	[WriteOnly]
 	public NativeList<int> OverlapIndices;
 
-	[NativeDisableContainerSafetyRestriction]
 	[ReadOnly]
+	[NativeDisableContainerSafetyRestriction]
 	public CoarseQueryGrid Grid;
 
 	[ReadOnly]
@@ -21160,9 +21650,9 @@ using System;
 using UnityEngine;
 using UnityStandardAssets.CinematicEffects;
 
-[ImageEffectAllowedInSceneView]
-[AddComponentMenu("Image Effects/Cinematic/Tonemapping and Color Grading")]
 [ExecuteInEditMode]
+[AddComponentMenu("Image Effects/Cinematic/Tonemapping and Color Grading")]
+[ImageEffectAllowedInSceneView]
 public class TonemappingColorGrading : MonoBehaviour
 {
 	[AttributeUsage(AttributeTargets.Field)]
@@ -21220,8 +21710,8 @@ public class TonemappingColorGrading : MonoBehaviour
 	{
 		public bool enabled;
 
-		[Tooltip("Midpoint Adjustment.")]
 		[Min(0f)]
+		[Tooltip("Midpoint Adjustment.")]
 		public float middleGrey;
 
 		[Tooltip("The lowest possible exposure value; adjust this value to modify the brightest areas of your level.")]
@@ -21230,8 +21720,8 @@ public class TonemappingColorGrading : MonoBehaviour
 		[Tooltip("The highest possible exposure value; adjust this value to modify the darkest areas of your level.")]
 		public float max;
 
-		[Tooltip("Speed of linear adaptation. Higher is faster.")]
 		[Min(0f)]
+		[Tooltip("Speed of linear adaptation. Higher is faster.")]
 		public float speed;
 
 		[Tooltip("Displays a luminosity helper in the GameView.")]
@@ -21272,8 +21762,8 @@ public class TonemappingColorGrading : MonoBehaviour
 		[Tooltip("Tonemapping technique to use. ACES is the recommended one.")]
 		public Tonemapper tonemapper;
 
-		[Tooltip("Adjusts the overall exposure of the scene.")]
 		[Min(0f)]
+		[Tooltip("Adjusts the overall exposure of the scene.")]
 		public float exposure;
 
 		[Tooltip("Custom tonemapping curve.")]
@@ -21325,8 +21815,8 @@ public class TonemappingColorGrading : MonoBehaviour
 		[Tooltip("Custom lookup texture (strip format, e.g. 256x16).")]
 		public Texture texture;
 
-		[Range(0f, 1f)]
 		[Tooltip("Blending factor.")]
+		[Range(0f, 1f)]
 		public float contribution;
 
 		public static LUTSettings defaultSettings
@@ -21384,34 +21874,34 @@ public class TonemappingColorGrading : MonoBehaviour
 		[Range(-2f, 2f)]
 		public float tint;
 
-		[Tooltip("Shift the hue of all colors.")]
 		[Range(-0.5f, 0.5f)]
+		[Tooltip("Shift the hue of all colors.")]
 		[Space]
 		public float hue;
 
-		[Tooltip("Pushes the intensity of all colors.")]
 		[Range(0f, 2f)]
+		[Tooltip("Pushes the intensity of all colors.")]
 		public float saturation;
 
-		[Tooltip("Adjusts the saturation so that clipping is minimized as colors approach full saturation.")]
 		[Range(-1f, 1f)]
+		[Tooltip("Adjusts the saturation so that clipping is minimized as colors approach full saturation.")]
 		public float vibrance;
 
 		[Range(0f, 10f)]
 		[Tooltip("Brightens or darkens all colors.")]
 		public float value;
 
-		[Space]
-		[Range(0f, 2f)]
 		[Tooltip("Expands or shrinks the overall range of tonal values.")]
+		[Range(0f, 2f)]
+		[Space]
 		public float contrast;
 
-		[Range(0.01f, 5f)]
 		[Tooltip("Contrast gain curve. Controls the steepness of the curve.")]
+		[Range(0.01f, 5f)]
 		public float gain;
 
-		[Range(0.01f, 5f)]
 		[Tooltip("Applies a pow function to the source.")]
+		[Range(0.01f, 5f)]
 		public float gamma;
 
 		public static BasicsSettings defaultSettings
@@ -21512,24 +22002,24 @@ public class TonemappingColorGrading : MonoBehaviour
 		[Tooltip("Internal LUT precision. \"Normal\" is 256x16, \"High\" is 1024x32. Prefer \"Normal\" on mobile devices.")]
 		public ColorGradingPrecision precision;
 
-		[Space]
 		[ColorWheelGroup]
+		[Space]
 		public ColorWheelsSettings colorWheels;
 
-		[Space]
 		[IndentedGroup]
+		[Space]
 		public BasicsSettings basics;
 
 		[ChannelMixer]
 		[Space]
 		public ChannelMixerSettings channelMixer;
 
-		[IndentedGroup]
 		[Space]
+		[IndentedGroup]
 		public CurvesSettings curves;
 
-		[Space]
 		[Tooltip("Use dithering to try and minimize color banding in dark areas.")]
+		[Space]
 		public bool useDithering;
 
 		[Tooltip("Displays the generated LUT in the top left corner of the GameView.")]
@@ -21558,16 +22048,16 @@ public class TonemappingColorGrading : MonoBehaviour
 		}
 	}
 
-	[SerializeField]
 	[SettingsGroup]
+	[SerializeField]
 	private EyeAdaptationSettings m_EyeAdaptation = EyeAdaptationSettings.defaultSettings;
 
-	[SerializeField]
 	[SettingsGroup]
+	[SerializeField]
 	private TonemappingSettings m_Tonemapping = TonemappingSettings.defaultSettings;
 
-	[SerializeField]
 	[SettingsGroup]
+	[SerializeField]
 	private ColorGradingSettings m_ColorGrading = ColorGradingSettings.defaultSettings;
 
 	[SettingsGroup]
@@ -21652,8 +22142,8 @@ public struct EyeAdaptationSettings
 {
 	public bool enabled;
 
-	[Tooltip("Midpoint Adjustment.")]
 	[Min(0f)]
+	[Tooltip("Midpoint Adjustment.")]
 	public float middleGrey;
 
 	[Tooltip("The lowest possible exposure value; adjust this value to modify the brightest areas of your level.")]
@@ -21662,8 +22152,8 @@ public struct EyeAdaptationSettings
 	[Tooltip("The highest possible exposure value; adjust this value to modify the darkest areas of your level.")]
 	public float max;
 
-	[Tooltip("Speed of linear adaptation. Higher is faster.")]
 	[Min(0f)]
+	[Tooltip("Speed of linear adaptation. Higher is faster.")]
 	public float speed;
 
 	[Tooltip("Displays a luminosity helper in the GameView.")]
@@ -21709,8 +22199,8 @@ public struct TonemappingSettings
 	[Tooltip("Tonemapping technique to use. ACES is the recommended one.")]
 	public Tonemapper tonemapper;
 
-	[Tooltip("Adjusts the overall exposure of the scene.")]
 	[Min(0f)]
+	[Tooltip("Adjusts the overall exposure of the scene.")]
 	public float exposure;
 
 	[Tooltip("Custom tonemapping curve.")]
@@ -21766,8 +22256,8 @@ public struct LUTSettings
 	[Tooltip("Custom lookup texture (strip format, e.g. 256x16).")]
 	public Texture texture;
 
-	[Range(0f, 1f)]
 	[Tooltip("Blending factor.")]
+	[Range(0f, 1f)]
 	public float contribution;
 
 	public static LUTSettings defaultSettings
@@ -21833,34 +22323,34 @@ public struct BasicsSettings
 	[Range(-2f, 2f)]
 	public float tint;
 
-	[Tooltip("Shift the hue of all colors.")]
 	[Range(-0.5f, 0.5f)]
+	[Tooltip("Shift the hue of all colors.")]
 	[Space]
 	public float hue;
 
-	[Tooltip("Pushes the intensity of all colors.")]
 	[Range(0f, 2f)]
+	[Tooltip("Pushes the intensity of all colors.")]
 	public float saturation;
 
-	[Tooltip("Adjusts the saturation so that clipping is minimized as colors approach full saturation.")]
 	[Range(-1f, 1f)]
+	[Tooltip("Adjusts the saturation so that clipping is minimized as colors approach full saturation.")]
 	public float vibrance;
 
 	[Range(0f, 10f)]
 	[Tooltip("Brightens or darkens all colors.")]
 	public float value;
 
-	[Space]
-	[Range(0f, 2f)]
 	[Tooltip("Expands or shrinks the overall range of tonal values.")]
+	[Range(0f, 2f)]
+	[Space]
 	public float contrast;
 
-	[Range(0.01f, 5f)]
 	[Tooltip("Contrast gain curve. Controls the steepness of the curve.")]
+	[Range(0.01f, 5f)]
 	public float gain;
 
-	[Range(0.01f, 5f)]
 	[Tooltip("Applies a pow function to the source.")]
+	[Range(0.01f, 5f)]
 	public float gamma;
 
 	public static BasicsSettings defaultSettings
@@ -21974,24 +22464,24 @@ public struct ColorGradingSettings
 	[Tooltip("Internal LUT precision. \"Normal\" is 256x16, \"High\" is 1024x32. Prefer \"Normal\" on mobile devices.")]
 	public ColorGradingPrecision precision;
 
-	[Space]
 	[ColorWheelGroup]
+	[Space]
 	public ColorWheelsSettings colorWheels;
 
-	[Space]
 	[IndentedGroup]
+	[Space]
 	public BasicsSettings basics;
 
 	[ChannelMixer]
 	[Space]
 	public ChannelMixerSettings channelMixer;
 
-	[IndentedGroup]
 	[Space]
+	[IndentedGroup]
 	public CurvesSettings curves;
 
-	[Space]
 	[Tooltip("Use dithering to try and minimize color banding in dark areas.")]
+	[Space]
 	public bool useDithering;
 
 	[Tooltip("Displays the generated LUT in the top left corner of the GameView.")]
@@ -22972,6 +23462,13 @@ public class ConsoleInput
 }
 
 
+using System;
+
+public class ResetStaticFieldsAttribute : Attribute
+{
+}
+
+
 using Rust.Rendering.IndirectInstancing;
 using UnityEngine;
 
@@ -23385,7 +23882,9 @@ public static class ComponentEx
 
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Facepunch;
+using Rust;
 using UnityEngine;
 
 public static class CoroutineEx
@@ -23432,6 +23931,22 @@ public static class CoroutineEx
 				break;
 			}
 			yield return waitForEndOfFrame;
+		}
+	}
+
+	public static Task AsTask(this IEnumerator coroutine)
+	{
+		if (coroutine == null)
+		{
+			return Task.CompletedTask;
+		}
+		TaskCompletionSource<object> tcs = new TaskCompletionSource<object>();
+		((MonoBehaviour)Global.Runner).StartCoroutine(RunImpl());
+		return tcs.Task;
+		IEnumerator RunImpl()
+		{
+			yield return coroutine;
+			tcs.SetResult(null);
 		}
 	}
 }
@@ -24273,6 +24788,71 @@ public static class UIEx
 }
 
 
+using Unity.Jobs;
+using Unity.Jobs.LowLevel.Unsafe;
+using UnityEngine;
+using UnityEngine.Jobs;
+
+public static class JobEx
+{
+	public static int GetBatchSize(int length)
+	{
+		return Mathf.Max(length / JobsUtility.JobWorkerCount, 64);
+	}
+
+	public static JobHandle ScheduleParallel<T>(this ref T jobData, int arrayLength, JobHandle dependsOn) where T : struct, IJobFor
+	{
+		//IL_000d: Unknown result type (might be due to invalid IL or missing references)
+		//IL_000e: Unknown result type (might be due to invalid IL or missing references)
+		return IJobForExtensions.ScheduleParallel<T>(jobData, arrayLength, GetBatchSize(arrayLength), dependsOn);
+	}
+
+	public static JobHandle ScheduleParallelByRef<T>(this ref T jobData, int arrayLength, JobHandle dependsOn) where T : struct, IJobFor
+	{
+		//IL_0008: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0009: Unknown result type (might be due to invalid IL or missing references)
+		return IJobForExtensions.ScheduleParallelByRef<T>(ref jobData, arrayLength, GetBatchSize(arrayLength), dependsOn);
+	}
+
+	public static JobHandle ScheduleParallelReadOnly<T>(this ref T jobData, TransformAccessArray transforms, JobHandle dependsOn = default(JobHandle)) where T : struct, IJobParallelForTransform
+	{
+		//IL_0006: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0013: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0014: Unknown result type (might be due to invalid IL or missing references)
+		return IJobParallelForTransformExtensions.ScheduleReadOnly<T>(jobData, transforms, GetBatchSize(((TransformAccessArray)(ref transforms)).length), dependsOn);
+	}
+
+	public static JobHandle ScheduleParallelReadOnlyByRef<T>(this ref T jobData, TransformAccessArray transforms, JobHandle dependsOn = default(JobHandle)) where T : struct, IJobParallelForTransform
+	{
+		//IL_0001: Unknown result type (might be due to invalid IL or missing references)
+		//IL_000e: Unknown result type (might be due to invalid IL or missing references)
+		//IL_000f: Unknown result type (might be due to invalid IL or missing references)
+		return IJobParallelForTransformExtensions.ScheduleReadOnlyByRef<T>(ref jobData, transforms, GetBatchSize(((TransformAccessArray)(ref transforms)).length), dependsOn);
+	}
+}
+
+
+using Unity.Jobs;
+using UnityEngine.Jobs;
+
+public static class ParallelJobEx
+{
+	public static JobHandle ScheduleParallel<T>(this ref T jobData, int arrayLength, JobHandle dependsOn) where T : struct, IJobParallelFor
+	{
+		//IL_000d: Unknown result type (might be due to invalid IL or missing references)
+		//IL_000e: Unknown result type (might be due to invalid IL or missing references)
+		return IJobParallelForExtensions.Schedule<T>(jobData, arrayLength, JobEx.GetBatchSize(arrayLength), dependsOn);
+	}
+
+	public static JobHandle ScheduleParallelByRef<T>(this ref T jobData, int arrayLength, JobHandle dependsOn) where T : struct, IJobParallelFor
+	{
+		//IL_0008: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0009: Unknown result type (might be due to invalid IL or missing references)
+		return IJobParallelForExtensions.ScheduleByRef<T>(ref jobData, arrayLength, JobEx.GetBatchSize(arrayLength), dependsOn);
+	}
+}
+
+
 using System;
 using Rust;
 using UnityEngine;
@@ -24281,9 +24861,9 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 [ExecuteInEditMode]
-[RequireComponent(typeof(RectTransform))]
-[AddComponentMenu("UI/Scroll Rect Ex", 37)]
 [SelectionBase]
+[AddComponentMenu("UI/Scroll Rect Ex", 37)]
+[RequireComponent(typeof(RectTransform))]
 public class ScrollRectEx : UIBehaviour, IInitializePotentialDragHandler, IEventSystemHandler, IBeginDragHandler, IEndDragHandler, IDragHandler, IScrollHandler, ICanvasElement, ILayoutGroup, ILayoutController
 {
 	public enum MovementType
@@ -25918,8 +26498,8 @@ public class UICircle : UIPrimitiveBase
 	[Tooltip("The Arc Steps property defines the number of segments that the Arc will be divided into.")]
 	public int ArcSteps = 100;
 
-	[Range(0f, 360f)]
 	[Tooltip("The Arc Rotation property permits adjusting the geometry orientation around the Z axis.")]
+	[Range(0f, 360f)]
 	public int ArcRotation;
 
 	[Tooltip("The Progress property allows the primitive to be used as a progression indicator.")]
@@ -26200,8 +26780,8 @@ using UnityEngine.UI.Extensions;
 [AddComponentMenu("UI/Extensions/Primitives/UI Circle Simple")]
 public class UICircleSimple : UIPrimitiveBase
 {
-	[Range(0f, 1000f)]
 	[Tooltip("The Arc Steps property defines the number of segments that the Arc will be divided into.")]
+	[Range(0f, 1000f)]
 	public int ArcSteps = 100;
 
 	public bool Fill = true;
@@ -26426,8 +27006,8 @@ public class UICornerCut : UIPrimitiveBase
 {
 	public Vector2 cornerSize = new Vector2(16f, 16f);
 
-	[Header("Corners to cut")]
 	[SerializeField]
+	[Header("Corners to cut")]
 	private bool m_cutUL = true;
 
 	[SerializeField]
@@ -26439,8 +27019,8 @@ public class UICornerCut : UIPrimitiveBase
 	[SerializeField]
 	private bool m_cutLR;
 
-	[SerializeField]
 	[Tooltip("Up-Down colors become Left-Right colors")]
+	[SerializeField]
 	private bool m_makeColumns;
 
 	[SerializeField]
@@ -27157,24 +27737,24 @@ public class UILineRenderer : UIPrimitiveBase
 
 	private static Vector2[] fullUvs;
 
-	[SerializeField]
 	[Tooltip("Points to draw lines between\n Can be improved using the Resolution Option")]
+	[SerializeField]
 	internal Vector2[] m_points;
 
-	[SerializeField]
 	[Tooltip("Segments to be drawn\n This is a list of arrays of points")]
+	[SerializeField]
 	internal List<Vector2[]> m_segments;
 
-	[SerializeField]
 	[Tooltip("Thickness of the line")]
+	[SerializeField]
 	internal float lineThickness = 2f;
 
 	[SerializeField]
 	[Tooltip("Use the relative bounds of the Rect Transform (0,0 -> 0,1) or screen space coordinates")]
 	internal bool relativeSize;
 
-	[Tooltip("Do the points identify a single line or split pairs of lines")]
 	[SerializeField]
+	[Tooltip("Do the points identify a single line or split pairs of lines")]
 	internal bool lineList;
 
 	[SerializeField]
@@ -27878,727 +28458,6 @@ public class UILineRenderer : UIPrimitiveBase
 		Vector2 val2 = p2 - p1;
 		float num = Mathf.Clamp01(Vector2.Dot(val, ((Vector2)(ref val2)).normalized) / ((Vector2)(ref val2)).magnitude);
 		return p1 + val2 * num;
-	}
-}
-
-
-private enum SegmentType
-{
-	Start,
-	Middle,
-	End,
-	Full
-}
-
-
-public enum JoinType
-{
-	Bevel,
-	Miter
-}
-
-
-public enum BezierType
-{
-	None,
-	Quick,
-	Basic,
-	Improved,
-	Catenary
-}
-
-
-using System;
-using System.Collections.Generic;
-using UnityEngine;
-using UnityEngine.Sprites;
-using UnityEngine.UI;
-using UnityEngine.UI.Extensions;
-
-[AddComponentMenu("UI/Extensions/Primitives/UILineRendererList")]
-[RequireComponent(typeof(RectTransform))]
-public class UILineRendererList : UIPrimitiveBase
-{
-	private enum SegmentType
-	{
-		Start,
-		Middle,
-		End,
-		Full
-	}
-
-	public enum JoinType
-	{
-		Bevel,
-		Miter
-	}
-
-	public enum BezierType
-	{
-		None,
-		Quick,
-		Basic,
-		Improved,
-		Catenary
-	}
-
-	private const float MIN_MITER_JOIN = MathF.PI / 12f;
-
-	private const float MIN_BEVEL_NICE_JOIN = MathF.PI / 6f;
-
-	private static Vector2 UV_TOP_LEFT;
-
-	private static Vector2 UV_BOTTOM_LEFT;
-
-	private static Vector2 UV_TOP_CENTER_LEFT;
-
-	private static Vector2 UV_TOP_CENTER_RIGHT;
-
-	private static Vector2 UV_BOTTOM_CENTER_LEFT;
-
-	private static Vector2 UV_BOTTOM_CENTER_RIGHT;
-
-	private static Vector2 UV_TOP_RIGHT;
-
-	private static Vector2 UV_BOTTOM_RIGHT;
-
-	private static Vector2[] startUvs;
-
-	private static Vector2[] middleUvs;
-
-	private static Vector2[] endUvs;
-
-	private static Vector2[] fullUvs;
-
-	[Tooltip("Points to draw lines between\n Can be improved using the Resolution Option")]
-	[SerializeField]
-	internal List<Vector2> m_points;
-
-	[Tooltip("Thickness of the line")]
-	[SerializeField]
-	internal float lineThickness = 2f;
-
-	[Tooltip("Use the relative bounds of the Rect Transform (0,0 -> 0,1) or screen space coordinates")]
-	[SerializeField]
-	internal bool relativeSize;
-
-	[Tooltip("Do the points identify a single line or split pairs of lines")]
-	[SerializeField]
-	internal bool lineList;
-
-	[SerializeField]
-	[Tooltip("Add end caps to each line\nMultiple caps when used with Line List")]
-	internal bool lineCaps;
-
-	[Tooltip("Resolution of the Bezier curve, different to line Resolution")]
-	[SerializeField]
-	internal int bezierSegmentsPerCurve = 10;
-
-	[Tooltip("The type of Join used between lines, Square/Mitre or Curved/Bevel")]
-	public JoinType LineJoins;
-
-	[Tooltip("Bezier method to apply to line, see docs for options\nCan't be used in conjunction with Resolution as Bezier already changes the resolution")]
-	public BezierType BezierMode;
-
-	[HideInInspector]
-	public bool drivenExternally;
-
-	public float LineThickness
-	{
-		get
-		{
-			return lineThickness;
-		}
-		set
-		{
-			lineThickness = value;
-			((Graphic)this).SetAllDirty();
-		}
-	}
-
-	public bool RelativeSize
-	{
-		get
-		{
-			return relativeSize;
-		}
-		set
-		{
-			relativeSize = value;
-			((Graphic)this).SetAllDirty();
-		}
-	}
-
-	public bool LineList
-	{
-		get
-		{
-			return lineList;
-		}
-		set
-		{
-			lineList = value;
-			((Graphic)this).SetAllDirty();
-		}
-	}
-
-	public bool LineCaps
-	{
-		get
-		{
-			return lineCaps;
-		}
-		set
-		{
-			lineCaps = value;
-			((Graphic)this).SetAllDirty();
-		}
-	}
-
-	public int BezierSegmentsPerCurve
-	{
-		get
-		{
-			return bezierSegmentsPerCurve;
-		}
-		set
-		{
-			bezierSegmentsPerCurve = value;
-		}
-	}
-
-	public List<Vector2> Points
-	{
-		get
-		{
-			return m_points;
-		}
-		set
-		{
-			if (m_points != value)
-			{
-				m_points = value;
-				((Graphic)this).SetAllDirty();
-			}
-		}
-	}
-
-	public void AddPoint(Vector2 pointToAdd)
-	{
-		//IL_0006: Unknown result type (might be due to invalid IL or missing references)
-		m_points.Add(pointToAdd);
-		((Graphic)this).SetAllDirty();
-	}
-
-	public void RemovePoint(Vector2 pointToRemove)
-	{
-		//IL_0006: Unknown result type (might be due to invalid IL or missing references)
-		m_points.Remove(pointToRemove);
-		((Graphic)this).SetAllDirty();
-	}
-
-	public void ClearPoints()
-	{
-		m_points.Clear();
-		((Graphic)this).SetAllDirty();
-	}
-
-	private void PopulateMesh(VertexHelper vh, List<Vector2> pointsToDraw)
-	{
-		//IL_00d3: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00d8: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00f7: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00fc: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0113: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0127: Unknown result type (might be due to invalid IL or missing references)
-		//IL_020a: Unknown result type (might be due to invalid IL or missing references)
-		//IL_020f: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0214: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0219: Unknown result type (might be due to invalid IL or missing references)
-		//IL_021d: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0228: Unknown result type (might be due to invalid IL or missing references)
-		//IL_023a: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0245: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0154: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0159: Unknown result type (might be due to invalid IL or missing references)
-		//IL_015e: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0163: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0167: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0172: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0184: Unknown result type (might be due to invalid IL or missing references)
-		//IL_018f: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0277: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0279: Unknown result type (might be due to invalid IL or missing references)
-		//IL_01bc: Unknown result type (might be due to invalid IL or missing references)
-		//IL_01be: Unknown result type (might be due to invalid IL or missing references)
-		//IL_01aa: Unknown result type (might be due to invalid IL or missing references)
-		//IL_01ac: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0265: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0267: Unknown result type (might be due to invalid IL or missing references)
-		//IL_01d6: Unknown result type (might be due to invalid IL or missing references)
-		//IL_01d8: Unknown result type (might be due to invalid IL or missing references)
-		//IL_029d: Unknown result type (might be due to invalid IL or missing references)
-		//IL_029f: Unknown result type (might be due to invalid IL or missing references)
-		//IL_02f1: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0305: Unknown result type (might be due to invalid IL or missing references)
-		//IL_030a: Unknown result type (might be due to invalid IL or missing references)
-		//IL_030f: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0322: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0338: Unknown result type (might be due to invalid IL or missing references)
-		//IL_033d: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0342: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0344: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0346: Unknown result type (might be due to invalid IL or missing references)
-		//IL_034b: Unknown result type (might be due to invalid IL or missing references)
-		//IL_034d: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0361: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0368: Unknown result type (might be due to invalid IL or missing references)
-		//IL_036d: Unknown result type (might be due to invalid IL or missing references)
-		//IL_03a9: Unknown result type (might be due to invalid IL or missing references)
-		//IL_03b0: Unknown result type (might be due to invalid IL or missing references)
-		//IL_03b7: Unknown result type (might be due to invalid IL or missing references)
-		//IL_03be: Unknown result type (might be due to invalid IL or missing references)
-		//IL_03c3: Unknown result type (might be due to invalid IL or missing references)
-		//IL_03c8: Unknown result type (might be due to invalid IL or missing references)
-		//IL_03d9: Unknown result type (might be due to invalid IL or missing references)
-		//IL_03e0: Unknown result type (might be due to invalid IL or missing references)
-		//IL_03e7: Unknown result type (might be due to invalid IL or missing references)
-		//IL_03ee: Unknown result type (might be due to invalid IL or missing references)
-		//IL_03f3: Unknown result type (might be due to invalid IL or missing references)
-		//IL_03f8: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0544: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0549: Unknown result type (might be due to invalid IL or missing references)
-		//IL_055a: Unknown result type (might be due to invalid IL or missing references)
-		//IL_055f: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0572: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0577: Unknown result type (might be due to invalid IL or missing references)
-		//IL_058a: Unknown result type (might be due to invalid IL or missing references)
-		//IL_058f: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0444: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0446: Unknown result type (might be due to invalid IL or missing references)
-		//IL_045a: Unknown result type (might be due to invalid IL or missing references)
-		//IL_045c: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0472: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0474: Unknown result type (might be due to invalid IL or missing references)
-		//IL_048a: Unknown result type (might be due to invalid IL or missing references)
-		//IL_048c: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0513: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0515: Unknown result type (might be due to invalid IL or missing references)
-		//IL_052b: Unknown result type (might be due to invalid IL or missing references)
-		//IL_052d: Unknown result type (might be due to invalid IL or missing references)
-		//IL_04e3: Unknown result type (might be due to invalid IL or missing references)
-		//IL_04e5: Unknown result type (might be due to invalid IL or missing references)
-		//IL_04fb: Unknown result type (might be due to invalid IL or missing references)
-		//IL_04fd: Unknown result type (might be due to invalid IL or missing references)
-		if (BezierMode != 0 && BezierMode != BezierType.Catenary && pointsToDraw.Count > 3)
-		{
-			BezierPath bezierPath = new BezierPath();
-			bezierPath.SetControlPoints(pointsToDraw);
-			bezierPath.SegmentsPerCurve = bezierSegmentsPerCurve;
-			pointsToDraw = BezierMode switch
-			{
-				BezierType.Basic => bezierPath.GetDrawingPoints0(), 
-				BezierType.Improved => bezierPath.GetDrawingPoints1(), 
-				_ => bezierPath.GetDrawingPoints2(), 
-			};
-		}
-		if (BezierMode == BezierType.Catenary && pointsToDraw.Count == 2)
-		{
-			CableCurve cableCurve = new CableCurve(pointsToDraw);
-			cableCurve.slack = base.Resoloution;
-			cableCurve.steps = BezierSegmentsPerCurve;
-			pointsToDraw.Clear();
-			pointsToDraw.AddRange(cableCurve.Points());
-		}
-		if (base.ImproveResolution != 0)
-		{
-			pointsToDraw = IncreaseResolution(pointsToDraw);
-		}
-		Rect rect;
-		float num;
-		if (relativeSize)
-		{
-			rect = ((Graphic)this).rectTransform.rect;
-			num = ((Rect)(ref rect)).width;
-		}
-		else
-		{
-			num = 1f;
-		}
-		float num2 = num;
-		float num3;
-		if (relativeSize)
-		{
-			rect = ((Graphic)this).rectTransform.rect;
-			num3 = ((Rect)(ref rect)).height;
-		}
-		else
-		{
-			num3 = 1f;
-		}
-		float num4 = num3;
-		float num5 = (0f - ((Graphic)this).rectTransform.pivot.x) * num2;
-		float num6 = (0f - ((Graphic)this).rectTransform.pivot.y) * num4;
-		List<UIVertex[]> list = new List<UIVertex[]>();
-		if (lineList)
-		{
-			for (int i = 1; i < pointsToDraw.Count; i += 2)
-			{
-				Vector2 val = pointsToDraw[i - 1];
-				Vector2 val2 = pointsToDraw[i];
-				((Vector2)(ref val))..ctor(val.x * num2 + num5, val.y * num4 + num6);
-				((Vector2)(ref val2))..ctor(val2.x * num2 + num5, val2.y * num4 + num6);
-				if (lineCaps)
-				{
-					list.Add(CreateLineCap(val, val2, SegmentType.Start));
-				}
-				list.Add(CreateLineSegment(val, val2, SegmentType.Middle));
-				if (lineCaps)
-				{
-					list.Add(CreateLineCap(val, val2, SegmentType.End));
-				}
-			}
-		}
-		else
-		{
-			for (int j = 1; j < pointsToDraw.Count; j++)
-			{
-				Vector2 val3 = pointsToDraw[j - 1];
-				Vector2 val4 = pointsToDraw[j];
-				((Vector2)(ref val3))..ctor(val3.x * num2 + num5, val3.y * num4 + num6);
-				((Vector2)(ref val4))..ctor(val4.x * num2 + num5, val4.y * num4 + num6);
-				if (lineCaps && j == 1)
-				{
-					list.Add(CreateLineCap(val3, val4, SegmentType.Start));
-				}
-				list.Add(CreateLineSegment(val3, val4, SegmentType.Middle));
-				if (lineCaps && j == pointsToDraw.Count - 1)
-				{
-					list.Add(CreateLineCap(val3, val4, SegmentType.End));
-				}
-			}
-		}
-		for (int k = 0; k < list.Count; k++)
-		{
-			if (!lineList && k < list.Count - 1)
-			{
-				Vector3 val5 = list[k][1].position - list[k][2].position;
-				Vector3 val6 = list[k + 1][2].position - list[k + 1][1].position;
-				float num7 = Vector2.Angle(Vector2.op_Implicit(val5), Vector2.op_Implicit(val6)) * (MathF.PI / 180f);
-				float num8 = Mathf.Sign(Vector3.Cross(((Vector3)(ref val5)).normalized, ((Vector3)(ref val6)).normalized).z);
-				float num9 = lineThickness / (2f * Mathf.Tan(num7 / 2f));
-				Vector3 position = list[k][2].position - ((Vector3)(ref val5)).normalized * num9 * num8;
-				Vector3 position2 = list[k][3].position + ((Vector3)(ref val5)).normalized * num9 * num8;
-				JoinType joinType = LineJoins;
-				if (joinType == JoinType.Miter)
-				{
-					if (num9 < ((Vector3)(ref val5)).magnitude / 2f && num9 < ((Vector3)(ref val6)).magnitude / 2f && num7 > MathF.PI / 12f)
-					{
-						list[k][2].position = position;
-						list[k][3].position = position2;
-						list[k + 1][0].position = position2;
-						list[k + 1][1].position = position;
-					}
-					else
-					{
-						joinType = JoinType.Bevel;
-					}
-				}
-				if (joinType == JoinType.Bevel)
-				{
-					if (num9 < ((Vector3)(ref val5)).magnitude / 2f && num9 < ((Vector3)(ref val6)).magnitude / 2f && num7 > MathF.PI / 6f)
-					{
-						if (num8 < 0f)
-						{
-							list[k][2].position = position;
-							list[k + 1][1].position = position;
-						}
-						else
-						{
-							list[k][3].position = position2;
-							list[k + 1][0].position = position2;
-						}
-					}
-					UIVertex[] array = (UIVertex[])(object)new UIVertex[4]
-					{
-						list[k][2],
-						list[k][3],
-						list[k + 1][0],
-						list[k + 1][1]
-					};
-					vh.AddUIVertexQuad(array);
-				}
-			}
-			vh.AddUIVertexQuad(list[k]);
-		}
-		if (vh.currentVertCount > 64000)
-		{
-			Debug.LogError((object)("Max Verticies size is 64000, current mesh vertcies count is [" + vh.currentVertCount + "] - Cannot Draw"));
-			vh.Clear();
-		}
-	}
-
-	protected override void OnPopulateMesh(VertexHelper vh)
-	{
-		if (m_points != null && m_points.Count > 0)
-		{
-			GeneratedUVs();
-			vh.Clear();
-			PopulateMesh(vh, m_points);
-		}
-	}
-
-	private UIVertex[] CreateLineCap(Vector2 start, Vector2 end, SegmentType type)
-	{
-		//IL_0003: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0004: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0005: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0006: Unknown result type (might be due to invalid IL or missing references)
-		//IL_000b: Unknown result type (might be due to invalid IL or missing references)
-		//IL_000e: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0019: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0023: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0028: Unknown result type (might be due to invalid IL or missing references)
-		//IL_002d: Unknown result type (might be due to invalid IL or missing references)
-		//IL_002f: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0030: Unknown result type (might be due to invalid IL or missing references)
-		//IL_003c: Unknown result type (might be due to invalid IL or missing references)
-		//IL_003d: Unknown result type (might be due to invalid IL or missing references)
-		//IL_003e: Unknown result type (might be due to invalid IL or missing references)
-		//IL_003f: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0044: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0047: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0052: Unknown result type (might be due to invalid IL or missing references)
-		//IL_005c: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0061: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0066: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0068: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0069: Unknown result type (might be due to invalid IL or missing references)
-		Vector2 val;
-		switch (type)
-		{
-		case SegmentType.Start:
-		{
-			val = end - start;
-			Vector2 start2 = start - ((Vector2)(ref val)).normalized * lineThickness / 2f;
-			return CreateLineSegment(start2, start, SegmentType.Start);
-		}
-		case SegmentType.End:
-		{
-			val = end - start;
-			Vector2 end2 = end + ((Vector2)(ref val)).normalized * lineThickness / 2f;
-			return CreateLineSegment(end, end2, SegmentType.End);
-		}
-		default:
-			Debug.LogError((object)"Bad SegmentType passed in to CreateLineCap. Must be SegmentType.Start or SegmentType.End");
-			return null;
-		}
-	}
-
-	private UIVertex[] CreateLineSegment(Vector2 start, Vector2 end, SegmentType type)
-	{
-		//IL_0000: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0006: Unknown result type (might be due to invalid IL or missing references)
-		//IL_000d: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0013: Unknown result type (might be due to invalid IL or missing references)
-		//IL_001a: Unknown result type (might be due to invalid IL or missing references)
-		//IL_001f: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0023: Unknown result type (might be due to invalid IL or missing references)
-		//IL_002e: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0038: Unknown result type (might be due to invalid IL or missing references)
-		//IL_003d: Unknown result type (might be due to invalid IL or missing references)
-		//IL_003e: Unknown result type (might be due to invalid IL or missing references)
-		//IL_003f: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0040: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0045: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0046: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0047: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0048: Unknown result type (might be due to invalid IL or missing references)
-		//IL_004d: Unknown result type (might be due to invalid IL or missing references)
-		//IL_004e: Unknown result type (might be due to invalid IL or missing references)
-		//IL_004f: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0050: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0055: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0056: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0057: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0058: Unknown result type (might be due to invalid IL or missing references)
-		//IL_005d: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0083: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0084: Unknown result type (might be due to invalid IL or missing references)
-		//IL_008b: Unknown result type (might be due to invalid IL or missing references)
-		//IL_008c: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0093: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0094: Unknown result type (might be due to invalid IL or missing references)
-		//IL_009b: Unknown result type (might be due to invalid IL or missing references)
-		//IL_009d: Unknown result type (might be due to invalid IL or missing references)
-		//IL_011c: Unknown result type (might be due to invalid IL or missing references)
-		//IL_011d: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0124: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0125: Unknown result type (might be due to invalid IL or missing references)
-		//IL_012c: Unknown result type (might be due to invalid IL or missing references)
-		//IL_012d: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0134: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0136: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00b6: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00b7: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00be: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00bf: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00c6: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00c7: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00ce: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00d0: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00e9: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00ea: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00f1: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00f2: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00f9: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00fa: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0101: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0103: Unknown result type (might be due to invalid IL or missing references)
-		Vector2 val = new Vector2(start.y - end.y, end.x - start.x);
-		Vector2 val2 = ((Vector2)(ref val)).normalized * lineThickness / 2f;
-		Vector2 val3 = start - val2;
-		Vector2 val4 = start + val2;
-		Vector2 val5 = end + val2;
-		Vector2 val6 = end - val2;
-		return type switch
-		{
-			SegmentType.Start => SetVbo((Vector2[])(object)new Vector2[4] { val3, val4, val5, val6 }, startUvs), 
-			SegmentType.End => SetVbo((Vector2[])(object)new Vector2[4] { val3, val4, val5, val6 }, endUvs), 
-			SegmentType.Full => SetVbo((Vector2[])(object)new Vector2[4] { val3, val4, val5, val6 }, fullUvs), 
-			_ => SetVbo((Vector2[])(object)new Vector2[4] { val3, val4, val5, val6 }, middleUvs), 
-		};
-	}
-
-	protected override void GeneratedUVs()
-	{
-		//IL_00de: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00e3: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00f2: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00f7: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0106: Unknown result type (might be due to invalid IL or missing references)
-		//IL_010b: Unknown result type (might be due to invalid IL or missing references)
-		//IL_011a: Unknown result type (might be due to invalid IL or missing references)
-		//IL_011f: Unknown result type (might be due to invalid IL or missing references)
-		//IL_012e: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0133: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0142: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0147: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0156: Unknown result type (might be due to invalid IL or missing references)
-		//IL_015b: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0160: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0165: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0017: Unknown result type (might be due to invalid IL or missing references)
-		//IL_001c: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0023: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0028: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0029: Unknown result type (might be due to invalid IL or missing references)
-		//IL_002f: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0035: Unknown result type (might be due to invalid IL or missing references)
-		//IL_003a: Unknown result type (might be due to invalid IL or missing references)
-		//IL_003f: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0045: Unknown result type (might be due to invalid IL or missing references)
-		//IL_004b: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0050: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0055: Unknown result type (might be due to invalid IL or missing references)
-		//IL_005b: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0061: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0066: Unknown result type (might be due to invalid IL or missing references)
-		//IL_006b: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0071: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0077: Unknown result type (might be due to invalid IL or missing references)
-		//IL_007c: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0081: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0087: Unknown result type (might be due to invalid IL or missing references)
-		//IL_008d: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0092: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0097: Unknown result type (might be due to invalid IL or missing references)
-		//IL_009d: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00a3: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00a8: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00ad: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00b3: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00b9: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00be: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00c3: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00c9: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00cf: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00d4: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0172: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0177: Unknown result type (might be due to invalid IL or missing references)
-		//IL_017e: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0183: Unknown result type (might be due to invalid IL or missing references)
-		//IL_018a: Unknown result type (might be due to invalid IL or missing references)
-		//IL_018f: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0196: Unknown result type (might be due to invalid IL or missing references)
-		//IL_019b: Unknown result type (might be due to invalid IL or missing references)
-		//IL_01ad: Unknown result type (might be due to invalid IL or missing references)
-		//IL_01b2: Unknown result type (might be due to invalid IL or missing references)
-		//IL_01b9: Unknown result type (might be due to invalid IL or missing references)
-		//IL_01be: Unknown result type (might be due to invalid IL or missing references)
-		//IL_01c5: Unknown result type (might be due to invalid IL or missing references)
-		//IL_01ca: Unknown result type (might be due to invalid IL or missing references)
-		//IL_01d1: Unknown result type (might be due to invalid IL or missing references)
-		//IL_01d6: Unknown result type (might be due to invalid IL or missing references)
-		//IL_01e8: Unknown result type (might be due to invalid IL or missing references)
-		//IL_01ed: Unknown result type (might be due to invalid IL or missing references)
-		//IL_01f4: Unknown result type (might be due to invalid IL or missing references)
-		//IL_01f9: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0200: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0205: Unknown result type (might be due to invalid IL or missing references)
-		//IL_020c: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0211: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0223: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0228: Unknown result type (might be due to invalid IL or missing references)
-		//IL_022f: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0234: Unknown result type (might be due to invalid IL or missing references)
-		//IL_023b: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0240: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0247: Unknown result type (might be due to invalid IL or missing references)
-		//IL_024c: Unknown result type (might be due to invalid IL or missing references)
-		if ((Object)(object)base.activeSprite != (Object)null)
-		{
-			Vector4 outerUV = DataUtility.GetOuterUV(base.activeSprite);
-			Vector4 innerUV = DataUtility.GetInnerUV(base.activeSprite);
-			UV_TOP_LEFT = new Vector2(outerUV.x, outerUV.y);
-			UV_BOTTOM_LEFT = new Vector2(outerUV.x, outerUV.w);
-			UV_TOP_CENTER_LEFT = new Vector2(innerUV.x, innerUV.y);
-			UV_TOP_CENTER_RIGHT = new Vector2(innerUV.z, innerUV.y);
-			UV_BOTTOM_CENTER_LEFT = new Vector2(innerUV.x, innerUV.w);
-			UV_BOTTOM_CENTER_RIGHT = new Vector2(innerUV.z, innerUV.w);
-			UV_TOP_RIGHT = new Vector2(outerUV.z, outerUV.y);
-			UV_BOTTOM_RIGHT = new Vector2(outerUV.z, outerUV.w);
-		}
-		else
-		{
-			UV_TOP_LEFT = Vector2.zero;
-			UV_BOTTOM_LEFT = new Vector2(0f, 1f);
-			UV_TOP_CENTER_LEFT = new Vector2(0.5f, 0f);
-			UV_TOP_CENTER_RIGHT = new Vector2(0.5f, 0f);
-			UV_BOTTOM_CENTER_LEFT = new Vector2(0.5f, 1f);
-			UV_BOTTOM_CENTER_RIGHT = new Vector2(0.5f, 1f);
-			UV_TOP_RIGHT = new Vector2(1f, 0f);
-			UV_BOTTOM_RIGHT = Vector2.one;
-		}
-		startUvs = (Vector2[])(object)new Vector2[4] { UV_TOP_LEFT, UV_BOTTOM_LEFT, UV_BOTTOM_CENTER_LEFT, UV_TOP_CENTER_LEFT };
-		middleUvs = (Vector2[])(object)new Vector2[4] { UV_TOP_CENTER_LEFT, UV_BOTTOM_CENTER_LEFT, UV_BOTTOM_CENTER_RIGHT, UV_TOP_CENTER_RIGHT };
-		endUvs = (Vector2[])(object)new Vector2[4] { UV_TOP_CENTER_RIGHT, UV_BOTTOM_CENTER_RIGHT, UV_BOTTOM_RIGHT, UV_TOP_RIGHT };
-		fullUvs = (Vector2[])(object)new Vector2[4] { UV_TOP_LEFT, UV_BOTTOM_LEFT, UV_BOTTOM_RIGHT, UV_TOP_RIGHT };
-	}
-
-	protected override void ResolutionToNativeSize(float distance)
-	{
-		//IL_0010: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0015: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0031: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0036: Unknown result type (might be due to invalid IL or missing references)
-		if (base.UseNativeSize)
-		{
-			Rect rect = base.activeSprite.rect;
-			m_Resolution = distance / (((Rect)(ref rect)).width / base.pixelsPerUnit);
-			rect = base.activeSprite.rect;
-			lineThickness = ((Rect)(ref rect)).height / base.pixelsPerUnit;
-		}
 	}
 }
 

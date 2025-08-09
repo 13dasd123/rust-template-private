@@ -34,6 +34,12 @@ public class AutoTurret : ContainerIOEntity, IRemoteControllable, IHostileWarnin
 		}
 	}
 
+	private enum YawPitchMode
+	{
+		Separate,
+		Merged
+	}
+
 	public GameObjectRef gun_fire_effect;
 
 	public GameObjectRef bulletEffect;
@@ -157,15 +163,25 @@ public class AutoTurret : ContainerIOEntity, IRemoteControllable, IHostileWarnin
 
 	private const float SlowProjectileSpeedThreshold = 100f;
 
-	private Matrix4x4 gunRoot;
-
-	protected Matrix4x4 gunAimInitialLS;
-
-	private Quaternion gunAimInitialRot;
-
-	protected Quaternion gunAimRotLS;
-
 	protected Transform cachedTransf;
+
+	private YawPitchMode rotateMode;
+
+	private Matrix4x4 toYawFromRoot;
+
+	private Matrix4x4 toPitchFromRootOrYaw;
+
+	private Matrix4x4 toRCEyesFromPitch;
+
+	private Quaternion gunAimInitialYawRot;
+
+	private Quaternion gunAimInitialPitchOrTotalRot;
+
+	private Quaternion gunAimYawRotLS;
+
+	private Quaternion gunAimPitchOrTotalRotLS;
+
+	private Quaternion gunAimTotalRotWS;
 
 	public double nextForcedAimTime;
 
@@ -729,16 +745,34 @@ public class AutoTurret : ContainerIOEntity, IRemoteControllable, IHostileWarnin
 
 	public virtual Matrix4x4 GetCenterMuzzle()
 	{
-		//IL_0035: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0077: Unknown result type (might be due to invalid IL or missing references)
 		//IL_000e: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0014: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0019: Unknown result type (might be due to invalid IL or missing references)
-		//IL_001f: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0024: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0013: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0054: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0056: Unknown result type (might be due to invalid IL or missing references)
+		//IL_005b: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0061: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0066: Unknown result type (might be due to invalid IL or missing references)
+		//IL_006b: Unknown result type (might be due to invalid IL or missing references)
+		//IL_001c: Unknown result type (might be due to invalid IL or missing references)
+		//IL_001e: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0023: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0029: Unknown result type (might be due to invalid IL or missing references)
+		//IL_002e: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0033: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0039: Unknown result type (might be due to invalid IL or missing references)
+		//IL_003e: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0044: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0049: Unknown result type (might be due to invalid IL or missing references)
+		//IL_004e: Unknown result type (might be due to invalid IL or missing references)
 		if (base.isServer)
 		{
-			return cachedTransf.localToWorldMatrix * gunAimInitialLS * Matrix4x4.Rotate(gunAimRotLS);
+			Matrix4x4 localToWorldMatrix = cachedTransf.localToWorldMatrix;
+			if (rotateMode == YawPitchMode.Separate)
+			{
+				return localToWorldMatrix * toYawFromRoot * Matrix4x4.Rotate(gunAimYawRotLS) * toPitchFromRootOrYaw * Matrix4x4.Rotate(gunAimPitchOrTotalRotLS);
+			}
+			return localToWorldMatrix * toPitchFromRootOrYaw * Matrix4x4.Rotate(gunAimPitchOrTotalRotLS);
 		}
 		return gun_pitch.localToWorldMatrix;
 	}
@@ -925,19 +959,42 @@ public class AutoTurret : ContainerIOEntity, IRemoteControllable, IHostileWarnin
 		//IL_0040: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0045: Unknown result type (might be due to invalid IL or missing references)
 		//IL_004a: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0059: Unknown result type (might be due to invalid IL or missing references)
-		//IL_005f: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0064: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0069: Unknown result type (might be due to invalid IL or missing references)
-		//IL_006e: Unknown result type (might be due to invalid IL or missing references)
-		//IL_006f: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0074: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0076: Unknown result type (might be due to invalid IL or missing references)
-		//IL_007b: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0085: Unknown result type (might be due to invalid IL or missing references)
-		//IL_008a: Unknown result type (might be due to invalid IL or missing references)
-		//IL_008d: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0092: Unknown result type (might be due to invalid IL or missing references)
+		//IL_005c: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0061: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00aa: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00af: Unknown result type (might be due to invalid IL or missing references)
+		//IL_006b: Unknown result type (might be due to invalid IL or missing references)
+		//IL_006d: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0072: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0077: Unknown result type (might be due to invalid IL or missing references)
+		//IL_007c: Unknown result type (might be due to invalid IL or missing references)
+		//IL_007d: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0082: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0084: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0089: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00b9: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00be: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00c1: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00c6: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00cb: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00cd: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00d2: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00d7: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00dd: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00e2: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00e7: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00eb: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00f0: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00f8: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0104: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0109: Unknown result type (might be due to invalid IL or missing references)
+		//IL_010f: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0120: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0125: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0096: Unknown result type (might be due to invalid IL or missing references)
+		//IL_009b: Unknown result type (might be due to invalid IL or missing references)
+		//IL_009e: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00a3: Unknown result type (might be due to invalid IL or missing references)
 		if (aimDir == Vector3.zero)
 		{
 			return;
@@ -948,13 +1005,26 @@ public class AutoTurret : ContainerIOEntity, IRemoteControllable, IHostileWarnin
 			num = ((!HasTarget()) ? 15f : 35f);
 		}
 		Quaternion val = Quaternion.LookRotation(aimDir);
-		if (base.isServer)
+		if (!base.isServer)
 		{
-			Quaternion val2 = Quaternion.Inverse(cachedTransf.rotation * gunAimInitialRot) * val;
-			if (gunAimRotLS != val2)
+			return;
+		}
+		Quaternion rotation = cachedTransf.rotation;
+		if (rotateMode == YawPitchMode.Merged)
+		{
+			Quaternion val2 = Quaternion.Inverse(rotation * gunAimInitialPitchOrTotalRot) * val;
+			if (gunAimPitchOrTotalRotLS != val2)
 			{
-				gunAimRotLS = Mathx.Lerp(gunAimRotLS, val2, num, dt);
+				gunAimPitchOrTotalRotLS = Mathx.Lerp(gunAimPitchOrTotalRotLS, val2, num, dt);
 			}
+		}
+		else if (gunAimTotalRotWS != val)
+		{
+			gunAimTotalRotWS = Mathx.Lerp(gunAimTotalRotWS, val, num, dt);
+			Quaternion val3 = Quaternion.Inverse(rotation * gunAimInitialYawRot) * gunAimTotalRotWS;
+			Vector3 eulerAngles = ((Quaternion)(ref val3)).eulerAngles;
+			gunAimYawRotLS = Quaternion.Euler(0f, eulerAngles.y, 0f);
+			gunAimPitchOrTotalRotLS = Quaternion.Euler(eulerAngles.x, 0f, 0f);
 		}
 	}
 
@@ -1078,7 +1148,7 @@ public class AutoTurret : ContainerIOEntity, IRemoteControllable, IHostileWarnin
 
 	public void UserInput(InputState inputState, CameraViewerId viewerID)
 	{
-		//IL_00d7: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00eb: Unknown result type (might be due to invalid IL or missing references)
 		CameraViewerId? controllingViewerId = ControllingViewerId;
 		if (viewerID != controllingViewerId)
 		{
@@ -1096,44 +1166,55 @@ public class AutoTurret : ContainerIOEntity, IRemoteControllable, IHostileWarnin
 		}
 		else
 		{
-			if (EnsureReloaded() || !inputState.IsDown(BUTTON.FIRE_PRIMARY))
+			if (EnsureReloaded())
 			{
 				return;
 			}
 			BaseProjectile attachedWeapon = GetAttachedWeapon();
-			if (Object.op_Implicit((Object)(object)attachedWeapon))
+			if (inputState.IsDown(BUTTON.FIRE_PRIMARY))
 			{
-				float damageModifier = 1f;
-				float speedModifier = 1f;
-				ItemDefinition ammoType = attachedWeapon.primaryMagazine.ammoType;
-				if (Object.op_Implicit((Object)(object)ammoType))
+				if (Object.op_Implicit((Object)(object)attachedWeapon))
 				{
-					ItemModProjectile component = ((Component)ammoType).GetComponent<ItemModProjectile>();
-					if (Object.op_Implicit((Object)(object)component) && component.projectileVelocity < 100f)
+					if (attachedWeapon is ITurretNotify turretNotify)
 					{
-						speedModifier = 2f;
+						turretNotify.WarmupTick(wantsShoot: true);
+					}
+					float damageModifier = 1f;
+					float speedModifier = 1f;
+					ItemDefinition ammoType = attachedWeapon.primaryMagazine.ammoType;
+					if (Object.op_Implicit((Object)(object)ammoType))
+					{
+						ItemModProjectile component = ((Component)ammoType).GetComponent<ItemModProjectile>();
+						if (Object.op_Implicit((Object)(object)component) && component.projectileVelocity < 100f)
+						{
+							speedModifier = 2f;
+						}
+					}
+					if (attachedWeapon.primaryMagazine.contents > 0)
+					{
+						FireAttachedGun(Vector3.zero, aimCone, null, damageModifier, speedModifier);
+						float delay = (attachedWeapon.isSemiAuto ? (attachedWeapon.repeatDelay * 1.5f) : attachedWeapon.repeatDelay);
+						delay = attachedWeapon.ScaleRepeatDelay(delay);
+						nextShotTime = timeAsDouble + (double)delay;
+					}
+					else
+					{
+						nextShotTime = timeAsDouble + 5.0;
 					}
 				}
-				if (attachedWeapon.primaryMagazine.contents > 0)
+				else if (HasGenericFireable())
 				{
-					FireAttachedGun(Vector3.zero, aimCone, null, damageModifier, speedModifier);
-					float delay = (attachedWeapon.isSemiAuto ? (attachedWeapon.repeatDelay * 1.5f) : attachedWeapon.repeatDelay);
-					delay = attachedWeapon.ScaleRepeatDelay(delay);
-					nextShotTime = timeAsDouble + (double)delay;
+					AttachedWeapon.ServerUse(1f, 1f, null);
+					nextShotTime = timeAsDouble + 0.11500000208616257;
 				}
 				else
 				{
-					nextShotTime = timeAsDouble + 5.0;
+					nextShotTime = timeAsDouble + 1.0;
 				}
 			}
-			else if (HasGenericFireable())
+			else if (Object.op_Implicit((Object)(object)attachedWeapon) && attachedWeapon is ITurretNotify turretNotify2)
 			{
-				AttachedWeapon.ServerUse(1f, 1f, null);
-				nextShotTime = timeAsDouble + 0.11500000208616257;
-			}
-			else
-			{
-				nextShotTime = timeAsDouble + 1.0;
+				turretNotify2.WarmupTick(wantsShoot: false);
 			}
 		}
 	}
@@ -1230,10 +1311,10 @@ public class AutoTurret : ContainerIOEntity, IRemoteControllable, IHostileWarnin
 		}
 	}
 
-	[RPC_Server]
-	[RPC_Server.MaxDistance(3f)]
-	[RPC_Server.CallsPerSecond(3uL)]
 	[RPC_Server.IsVisible(3f)]
+	[RPC_Server.CallsPerSecond(3uL)]
+	[RPC_Server.MaxDistance(3f)]
+	[RPC_Server]
 	public void SERVER_RequestOpenRCPanel(RPCMessage msg)
 	{
 		BasePlayer player = msg.player;
@@ -1278,6 +1359,11 @@ public class AutoTurret : ContainerIOEntity, IRemoteControllable, IHostileWarnin
 
 	public void SetIsOnline(bool online)
 	{
+		BaseProjectile attachedWeapon = GetAttachedWeapon();
+		if (Object.op_Implicit((Object)(object)attachedWeapon) && attachedWeapon is ITurretNotify turretNotify)
+		{
+			turretNotify.OnAddedRemovedToTurret(online);
+		}
 		if (online != IsOn() && Interface.CallHook("OnTurretToggle", (object)this) == null)
 		{
 			SetFlag(Flags.On, online);
@@ -1544,8 +1630,8 @@ public class AutoTurret : ContainerIOEntity, IRemoteControllable, IHostileWarnin
 		}
 	}
 
-	[RPC_Server]
 	[RPC_Server.IsVisible(3f)]
+	[RPC_Server]
 	private void ClearList(RPCMessage rpc)
 	{
 		BasePlayer player = rpc.player;
@@ -1559,8 +1645,8 @@ public class AutoTurret : ContainerIOEntity, IRemoteControllable, IHostileWarnin
 		}
 	}
 
-	[RPC_Server.IsVisible(3f)]
 	[RPC_Server]
+	[RPC_Server.IsVisible(3f)]
 	public void AssignToFriend(RPCMessage msg)
 	{
 		//IL_0081: Unknown result type (might be due to invalid IL or missing references)
@@ -1594,8 +1680,8 @@ public class AutoTurret : ContainerIOEntity, IRemoteControllable, IHostileWarnin
 		}
 	}
 
-	[RPC_Server.IsVisible(3f)]
 	[RPC_Server]
+	[RPC_Server.IsVisible(3f)]
 	private void SERVER_AttackAll(RPCMessage rpc)
 	{
 		if (IsAuthed(rpc.player) && Interface.CallHook("OnTurretModeToggle", (object)this, (object)rpc.player) == null)
@@ -1612,24 +1698,31 @@ public class AutoTurret : ContainerIOEntity, IRemoteControllable, IHostileWarnin
 	public override void ServerInit()
 	{
 		//IL_00f4: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00f9: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0104: Unknown result type (might be due to invalid IL or missing references)
-		//IL_010f: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0114: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0119: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0120: Unknown result type (might be due to invalid IL or missing references)
-		//IL_012b: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0136: Unknown result type (might be due to invalid IL or missing references)
-		//IL_013b: Unknown result type (might be due to invalid IL or missing references)
+		//IL_010b: Unknown result type (might be due to invalid IL or missing references)
+		//IL_016e: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0179: Unknown result type (might be due to invalid IL or missing references)
+		//IL_017e: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0183: Unknown result type (might be due to invalid IL or missing references)
+		//IL_018f: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0194: Unknown result type (might be due to invalid IL or missing references)
+		//IL_01a0: Unknown result type (might be due to invalid IL or missing references)
+		//IL_01ab: Unknown result type (might be due to invalid IL or missing references)
+		//IL_01b0: Unknown result type (might be due to invalid IL or missing references)
+		//IL_01b5: Unknown result type (might be due to invalid IL or missing references)
+		//IL_01c1: Unknown result type (might be due to invalid IL or missing references)
+		//IL_01c6: Unknown result type (might be due to invalid IL or missing references)
+		//IL_01d2: Unknown result type (might be due to invalid IL or missing references)
+		//IL_01d7: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0135: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0140: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0142: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0143: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0144: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0149: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0155: Unknown result type (might be due to invalid IL or missing references)
-		//IL_015a: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0161: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0166: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0145: Unknown result type (might be due to invalid IL or missing references)
+		//IL_014a: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0156: Unknown result type (might be due to invalid IL or missing references)
+		//IL_015b: Unknown result type (might be due to invalid IL or missing references)
+		//IL_01f0: Unknown result type (might be due to invalid IL or missing references)
+		//IL_01fb: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0200: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0205: Unknown result type (might be due to invalid IL or missing references)
 		base.ServerInit();
 		ItemContainer itemContainer = base.inventory;
 		itemContainer.canAcceptItem = (Func<Item, int, bool>)Delegate.Combine(itemContainer.canAcceptItem, new Func<Item, int, bool>(CanAcceptItem));
@@ -1642,12 +1735,24 @@ public class AutoTurret : ContainerIOEntity, IRemoteControllable, IHostileWarnin
 		((Component)targetTrigger).GetComponent<SphereCollider>().radius = sightRange;
 		UpdateNearbyTurrets(created: true);
 		cachedTransf = ((Component)this).transform;
-		gunRoot = cachedTransf.localToWorldMatrix;
-		Matrix4x4 val = gun_yaw.localToWorldMatrix * ((Matrix4x4)(ref gunRoot)).inverse;
-		Matrix4x4 val2 = Matrix4x4.TRS(gun_pitch.localPosition, gun_pitch.localRotation, gun_pitch.localScale);
-		gunAimInitialLS = val2 * val;
-		gunAimRotLS = ((Matrix4x4)(ref gunAimInitialLS)).rotation;
-		gunAimInitialRot = gunAimRotLS;
+		rotateMode = ((gun_pitch.localPosition.x == 0f && gun_pitch.localPosition.z == 0f) ? YawPitchMode.Merged : YawPitchMode.Separate);
+		if (rotateMode == YawPitchMode.Merged)
+		{
+			toPitchFromRootOrYaw = cachedTransf.worldToLocalMatrix * gun_pitch.localToWorldMatrix;
+			gunAimInitialPitchOrTotalRot = ((Matrix4x4)(ref toPitchFromRootOrYaw)).rotation;
+		}
+		else
+		{
+			toYawFromRoot = ((Component)this).transform.root.worldToLocalMatrix * gun_yaw.localToWorldMatrix;
+			gunAimInitialYawRot = ((Matrix4x4)(ref toYawFromRoot)).rotation;
+			toPitchFromRootOrYaw = gun_yaw.worldToLocalMatrix * gun_pitch.localToWorldMatrix;
+			gunAimInitialPitchOrTotalRot = ((Matrix4x4)(ref toPitchFromRootOrYaw)).rotation;
+			gunAimTotalRotWS = gun_pitch.rotation;
+		}
+		if (Object.op_Implicit((Object)(object)RCEyes))
+		{
+			toRCEyesFromPitch = gun_pitch.worldToLocalMatrix * RCEyes.localToWorldMatrix;
+		}
 	}
 
 	internal override void DoServerDestroy()
@@ -1795,15 +1900,22 @@ public class AutoTurret : ContainerIOEntity, IRemoteControllable, IHostileWarnin
 
 	public virtual void FireAttachedGun(Vector3 targetPos, float aimCone, BaseCombatEntity target = null, float damageModifier = 1f, float speedModifier = 1f)
 	{
-		//IL_0030: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0023: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0035: Unknown result type (might be due to invalid IL or missing references)
-		//IL_003b: Unknown result type (might be due to invalid IL or missing references)
+		//IL_002e: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0033: Unknown result type (might be due to invalid IL or missing references)
+		//IL_004e: Unknown result type (might be due to invalid IL or missing references)
+		//IL_003c: Unknown result type (might be due to invalid IL or missing references)
+		//IL_003e: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0043: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0048: Unknown result type (might be due to invalid IL or missing references)
 		BaseProjectile attachedWeapon = GetAttachedWeapon();
-		if (!((Object)(object)attachedWeapon == (Object)null) && !IsOffline())
+		if (!((Object)(object)attachedWeapon == (Object)null) && !IsOffline() && (!(attachedWeapon is ITurretNotify turretNotify) || turretNotify.CanShoot()))
 		{
-			Matrix4x4 value = (IsBeingControlled ? RCEyes.localToWorldMatrix : GetCenterMuzzle());
-			attachedWeapon.ServerUse(damageModifier, speedModifier, value, useBulletThickness: false);
+			Matrix4x4 val = GetCenterMuzzle();
+			if (IsBeingControlled)
+			{
+				val *= toRCEyesFromPitch;
+			}
+			attachedWeapon.ServerUse(damageModifier, speedModifier, val, useBulletThickness: false);
 		}
 	}
 
@@ -1943,23 +2055,28 @@ public class AutoTurret : ContainerIOEntity, IRemoteControllable, IHostileWarnin
 
 	public void IdleTick(float dt)
 	{
-		//IL_002d: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0032: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0037: Unknown result type (might be due to invalid IL or missing references)
-		//IL_003c: Unknown result type (might be due to invalid IL or missing references)
-		//IL_003d: Unknown result type (might be due to invalid IL or missing references)
 		//IL_004d: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0052: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0057: Unknown result type (might be due to invalid IL or missing references)
 		//IL_005c: Unknown result type (might be due to invalid IL or missing references)
-		//IL_005e: Unknown result type (might be due to invalid IL or missing references)
-		//IL_005f: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0064: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0069: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0078: Unknown result type (might be due to invalid IL or missing references)
+		//IL_005d: Unknown result type (might be due to invalid IL or missing references)
+		//IL_006d: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0072: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0077: Unknown result type (might be due to invalid IL or missing references)
+		//IL_007c: Unknown result type (might be due to invalid IL or missing references)
 		//IL_007e: Unknown result type (might be due to invalid IL or missing references)
+		//IL_007f: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0084: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0089: Unknown result type (might be due to invalid IL or missing references)
-		//IL_008e: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0098: Unknown result type (might be due to invalid IL or missing references)
+		//IL_009e: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00a9: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00ae: Unknown result type (might be due to invalid IL or missing references)
+		BaseProjectile attachedWeapon = GetAttachedWeapon();
+		if (Object.op_Implicit((Object)(object)attachedWeapon) && attachedWeapon is ITurretNotify turretNotify)
+		{
+			turretNotify.WarmupTick(wantsShoot: false);
+		}
 		double realtimeSinceStartupAsDouble = Time.realtimeSinceStartupAsDouble;
 		if (realtimeSinceStartupAsDouble > nextIdleAimTime)
 		{
@@ -2218,6 +2335,10 @@ public class AutoTurret : ContainerIOEntity, IRemoteControllable, IHostileWarnin
 			{
 				attachedWeapon.SetGenericVisible(wantsVis: false);
 				attachedWeapon.SetLightsOn(isOn: false);
+				if (attachedWeapon is ITurretNotify turretNotify)
+				{
+					turretNotify.OnAddedRemovedToTurret(added: false);
+				}
 			}
 			AttachedWeapon = null;
 		}
@@ -2292,6 +2413,10 @@ public class AutoTurret : ContainerIOEntity, IRemoteControllable, IHostileWarnin
 		transform.localPosition += Vector3.forward * num * zOffsetScale;
 		heldEntity.SetGenericVisible(wantsVis: true);
 		heldEntity.SetLightsOn(isOn: true);
+		if (heldEntity is ITurretNotify turretNotify)
+		{
+			turretNotify.OnAddedRemovedToTurret(added: true);
+		}
 		return heldEntity;
 	}
 
@@ -2302,6 +2427,10 @@ public class AutoTurret : ContainerIOEntity, IRemoteControllable, IHostileWarnin
 		{
 			attachedWeapon.SetGenericVisible(wantsVis: false);
 			attachedWeapon.SetLightsOn(isOn: false);
+			if (attachedWeapon is ITurretNotify turretNotify)
+			{
+				turretNotify.OnAddedRemovedToTurret(added: false);
+			}
 		}
 		AttachedWeapon = null;
 		base.OnDied(info);
@@ -2332,10 +2461,10 @@ public class AutoTurret : ContainerIOEntity, IRemoteControllable, IHostileWarnin
 
 	public void TargetTick()
 	{
-		//IL_01fd: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0163: Unknown result type (might be due to invalid IL or missing references)
-		//IL_011e: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0123: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0211: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0176: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0130: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0135: Unknown result type (might be due to invalid IL or missing references)
 		double timeAsDouble = Time.timeAsDouble;
 		double realtimeSinceStartupAsDouble = Time.realtimeSinceStartupAsDouble;
 		if (realtimeSinceStartupAsDouble >= nextVisCheck)
@@ -2355,6 +2484,10 @@ public class AutoTurret : ContainerIOEntity, IRemoteControllable, IHostileWarnin
 		}
 		if (Object.op_Implicit((Object)(object)attachedWeapon))
 		{
+			if (attachedWeapon is ITurretNotify turretNotify)
+			{
+				turretNotify.WarmupTick(wantsShoot: true);
+			}
 			float damageModifier = 1f;
 			float speedModifier = 1f;
 			ItemDefinition ammoType = attachedWeapon.primaryMagazine.ammoType;
@@ -2840,6 +2973,13 @@ public class UpdateAutoTurretScanQueue : PersistentObjectWorkQueue<AutoTurret>
 }
 
 
+private enum YawPitchMode
+{
+	Separate,
+	Merged
+}
+
+
 using System;
 using System.Collections.Generic;
 using ConVar;
@@ -2876,8 +3016,8 @@ public class BallistaGun : BaseVehicleSeat
 		Down
 	}
 
-	[SerializeField]
 	[Header("Ballista")]
+	[SerializeField]
 	private bool isMountedOnVehicle = true;
 
 	[SerializeField]
@@ -2898,8 +3038,8 @@ public class BallistaGun : BaseVehicleSeat
 	[SerializeField]
 	private BaseProjectile.Magazine magazine;
 
-	[SerializeField]
 	[Space]
+	[SerializeField]
 	private Transform muzzle;
 
 	[SerializeField]
@@ -2931,8 +3071,8 @@ public class BallistaGun : BaseVehicleSeat
 	[SerializeField]
 	public Transform rightHandTarget;
 
-	[Header("Effects")]
 	[SerializeField]
+	[Header("Effects")]
 	private FiringEffect[] muzzleFireEffects;
 
 	[SerializeField]
@@ -2948,8 +3088,8 @@ public class BallistaGun : BaseVehicleSeat
 
 	private SoundModulation.Modulator aimMovementGainMod;
 
-	[SerializeField]
 	[Space]
+	[SerializeField]
 	private bool runSideChecks;
 
 	[SerializeField]
@@ -3210,25 +3350,40 @@ public class BallistaGun : BaseVehicleSeat
 				TimeWarning val2 = TimeWarning.New("SERVER_SwitchAmmoTo", 0);
 				try
 				{
-					TimeWarning val3 = TimeWarning.New("Call", 0);
+					TimeWarning val3 = TimeWarning.New("Conditions", 0);
 					try
 					{
-						RPCMessage rPCMessage = default(RPCMessage);
-						rPCMessage.connection = msg.connection;
-						rPCMessage.player = player;
-						rPCMessage.read = msg.read;
-						RPCMessage msg5 = rPCMessage;
-						SERVER_SwitchAmmoTo(msg5);
+						if (!RPC_Server.CallsPerSecond.Test(4118009042u, "SERVER_SwitchAmmoTo", this, player, 5uL))
+						{
+							return true;
+						}
 					}
 					finally
 					{
 						((IDisposable)val3)?.Dispose();
 					}
-				}
-				catch (Exception ex4)
-				{
-					Debug.LogException(ex4);
-					player.Kick("RPC Error in SERVER_SwitchAmmoTo");
+					try
+					{
+						val3 = TimeWarning.New("Call", 0);
+						try
+						{
+							RPCMessage rPCMessage = default(RPCMessage);
+							rPCMessage.connection = msg.connection;
+							rPCMessage.player = player;
+							rPCMessage.read = msg.read;
+							RPCMessage msg5 = rPCMessage;
+							SERVER_SwitchAmmoTo(msg5);
+						}
+						finally
+						{
+							((IDisposable)val3)?.Dispose();
+						}
+					}
+					catch (Exception ex4)
+					{
+						Debug.LogException(ex4);
+						player.Kick("RPC Error in SERVER_SwitchAmmoTo");
+					}
 				}
 				finally
 				{
@@ -3796,6 +3951,7 @@ public class BallistaGun : BaseVehicleSeat
 	}
 
 	[RPC_Server]
+	[RPC_Server.CallsPerSecond(5uL)]
 	private void SERVER_SwitchAmmoTo(RPCMessage msg)
 	{
 		//IL_0079: Unknown result type (might be due to invalid IL or missing references)
@@ -3831,10 +3987,10 @@ public class BallistaGun : BaseVehicleSeat
 		}
 	}
 
+	[RPC_Server.CallsPerSecond(1uL)]
 	[RPC_Server]
 	[RPC_Server.IsVisible(3f)]
 	[RPC_Server.MaxDistance(3f)]
-	[RPC_Server.CallsPerSecond(1uL)]
 	[RPC_Server.FromOwner(true)]
 	private void SERVER_FireClientProjectile(RPCMessage msg)
 	{
@@ -4054,11 +4210,11 @@ public class BallistaGun : BaseVehicleSeat
 		return signal == Signal.Attack;
 	}
 
-	[RPC_Server.FromOwner(true)]
-	[RPC_Server]
-	[RPC_Server.MaxDistance(3f)]
 	[RPC_Server.IsVisible(3f)]
+	[RPC_Server.FromOwner(true)]
 	[RPC_Server.CallsPerSecond(3uL)]
+	[RPC_Server.MaxDistance(3f)]
+	[RPC_Server]
 	private void SERVER_ReloadStart(RPCMessage msg)
 	{
 		//IL_0055: Unknown result type (might be due to invalid IL or missing references)
@@ -4077,10 +4233,10 @@ public class BallistaGun : BaseVehicleSeat
 		}
 	}
 
-	[RPC_Server.CallsPerSecond(3uL)]
-	[RPC_Server.FromOwner(true)]
-	[RPC_Server.IsVisible(3f)]
 	[RPC_Server.MaxDistance(3f)]
+	[RPC_Server.IsVisible(3f)]
+	[RPC_Server.FromOwner(true)]
+	[RPC_Server.CallsPerSecond(3uL)]
 	[RPC_Server]
 	public void SERVER_CancelReload(RPCMessage msg)
 	{
@@ -7109,8 +7265,8 @@ public class BaseArcadeMachine : BaseVehicle
 		Interface.CallHook("OnArcadeScoreAdded", (object)this, (object)player, (object)score);
 	}
 
-	[RPC_Server]
 	[RPC_Server.IsVisible(3f)]
+	[RPC_Server]
 	public void RequestAddScore(RPCMessage msg)
 	{
 		BasePlayer player = msg.player;
@@ -7210,9 +7366,9 @@ public class BaseArcadeMachine : BaseVehicle
 		}
 	}
 
-	[RPC_Server]
 	[RPC_Server.CallsPerSecond(7uL)]
 	[RPC_Server.IsVisible(3f)]
+	[RPC_Server]
 	public void BroadcastEntityMessage(RPCMessage msg)
 	{
 		BasePlayer player = msg.player;
@@ -7229,9 +7385,9 @@ public class BaseArcadeMachine : BaseVehicle
 		}
 	}
 
-	[RPC_Server]
-	[RPC_Server.CallsPerSecond(30uL)]
 	[RPC_Server.IsVisible(3f)]
+	[RPC_Server.CallsPerSecond(30uL)]
+	[RPC_Server]
 	public void GetSnapshotFromClient(RPCMessage msg)
 	{
 		BasePlayer player = msg.player;
@@ -8010,8 +8166,8 @@ public abstract class BaseCardGameEntity : BaseVehicle
 		}
 	}
 
-	[RPC_Server]
 	[RPC_Server.IsVisible(3f)]
+	[RPC_Server]
 	public void RPC_Editor_MakeRandomMove(RPCMessage msg)
 	{
 		if (Application.isEditor)
@@ -8020,8 +8176,8 @@ public abstract class BaseCardGameEntity : BaseVehicle
 		}
 	}
 
-	[RPC_Server]
 	[RPC_Server.IsVisible(3f)]
+	[RPC_Server]
 	private void RPC_Play(RPCMessage msg)
 	{
 		BasePlayer player = msg.player;
@@ -8099,7 +8255,7 @@ public class BaseCombatEntity : BaseEntity
 	{
 		public bool enabled;
 
-		[ItemSelector(ItemCategory.All)]
+		[ItemSelector]
 		public ItemDefinition itemTarget;
 
 		public int itemCount;
@@ -8128,10 +8284,10 @@ public class BaseCombatEntity : BaseEntity
 	{
 		public bool enabled;
 
-		[ItemSelector(ItemCategory.All)]
+		[ItemSelector]
 		public ItemDefinition itemTarget;
 
-		[ItemSelector(ItemCategory.All)]
+		[ItemSelector]
 		public ItemDefinition ignoreForRepair;
 
 		public GameObjectRef repairEffect;
@@ -8496,6 +8652,7 @@ public class BaseCombatEntity : BaseEntity
 		info.msg.baseCombat = Pool.Get<BaseCombat>();
 		info.msg.baseCombat.state = (int)lifestate;
 		info.msg.baseCombat.health = Health();
+		info.msg.baseCombat.maxHealth = MaxHealth();
 		if (ItemOwnership.IsValid())
 		{
 			info.msg.ownership = Pool.Get<ItemOwnershipAmount>();
@@ -8533,6 +8690,10 @@ public class BaseCombatEntity : BaseEntity
 		{
 			lifestate = (LifeState)info.msg.baseCombat.state;
 			_health = info.msg.baseCombat.health;
+			if (info.msg.baseCombat.maxHealth != 0f)
+			{
+				_maxHealth = info.msg.baseCombat.maxHealth;
+			}
 		}
 		base.Load(info);
 		if (info.msg.ownership != null)
@@ -8570,6 +8731,7 @@ public class BaseCombatEntity : BaseEntity
 	{
 		_maxHealth = newMax;
 		_health = Mathf.Min(_health, newMax);
+		SendNetworkUpdate();
 	}
 
 	public void DoHitNotify(HitInfo info)
@@ -8702,8 +8864,8 @@ public class BaseCombatEntity : BaseEntity
 	{
 	}
 
-	[RPC_Server]
 	[RPC_Server.MaxDistance(3f)]
+	[RPC_Server]
 	private void RPC_PickupStart(RPCMessage rpc)
 	{
 		if (rpc.player.CanInteract() && CanPickup(rpc.player))
@@ -9265,7 +9427,7 @@ public struct Pickup
 {
 	public bool enabled;
 
-	[ItemSelector(ItemCategory.All)]
+	[ItemSelector]
 	public ItemDefinition itemTarget;
 
 	public int itemCount;
@@ -9297,10 +9459,10 @@ public struct Repair
 {
 	public bool enabled;
 
-	[ItemSelector(ItemCategory.All)]
+	[ItemSelector]
 	public ItemDefinition itemTarget;
 
-	[ItemSelector(ItemCategory.All)]
+	[ItemSelector]
 	public ItemDefinition ignoreForRepair;
 
 	public GameObjectRef repairEffect;
@@ -9413,25 +9575,34 @@ public class BaseDiggableEntity : BaseCombatEntity
 	public BaseEntity SpawnItem(BasePlayer player)
 	{
 		//IL_0007: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00c4: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00ca: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00cf: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00d5: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00dc: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00e2: Unknown result type (might be due to invalid IL or missing references)
-		//IL_012c: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0136: Unknown result type (might be due to invalid IL or missing references)
+		//IL_015a: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0160: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0165: Unknown result type (might be due to invalid IL or missing references)
+		//IL_016b: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0172: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0178: Unknown result type (might be due to invalid IL or missing references)
+		//IL_01c3: Unknown result type (might be due to invalid IL or missing references)
+		//IL_01cd: Unknown result type (might be due to invalid IL or missing references)
 		DiggableEntityLoot.ItemEntry? item = GetItem(((Component)this).transform.position);
 		if (!item.HasValue || !item.HasValue)
 		{
 			return null;
 		}
-		Item item2 = ItemManager.Create(item.Value.Item, Random.Range(item.Value.Min, item.Value.Max + 1), 0uL);
-		item2.SetItemOwnership(player, ItemOwnershipPhrases.MetalDetector);
+		Item item2 = ItemManager.Create(item.Value.Item, Random.Range(item.Value.Min, item.Value.Max + 1), item.Value.Skin);
+		if (item.Value.Owner.HasValue)
+		{
+			ItemOwnershipShare value = item.Value.Owner.Value;
+			item2.AddItemOwnership(value.username, value.reason, value.amount);
+		}
+		item2.AddItemOwnership(player, ItemOwnershipPhrases.MetalDetector);
+		if (item.Value.Condition.HasValue)
+		{
+			item2.condition = item.Value.Condition.Value;
+		}
 		DroppedItem droppedItem = null;
 		if (item2 != null)
 		{
-			if (item2.hasCondition)
+			if (item2.hasCondition && !item.Value.Condition.HasValue)
 			{
 				item2.condition = Random.Range(item2.info.condition.foundCondition.fractionMin, item2.info.condition.foundCondition.fractionMax) * item2.info.condition.max;
 			}
@@ -9441,6 +9612,10 @@ public class BaseDiggableEntity : BaseCombatEntity
 				droppedItem.NeverCombine = true;
 				droppedItem.SetAngularVelocity(new Vector3(Random.Range(-1f, 1f), Random.Range(-1f, 1f), Random.Range(-1f, 1f)) * 720f);
 			}
+			if (item.Value.UID.HasValue)
+			{
+				BuriedItems.Instance.UnregisterItem(item.Value.UID.Value);
+			}
 		}
 		return droppedItem;
 	}
@@ -9448,6 +9623,7 @@ public class BaseDiggableEntity : BaseCombatEntity
 	private DiggableEntityLoot.ItemEntry? GetItem(Vector3 digWorldPos)
 	{
 		//IL_0037: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0077: Unknown result type (might be due to invalid IL or missing references)
 		if (LootLists == null)
 		{
 			return null;
@@ -9460,6 +9636,10 @@ public class BaseDiggableEntity : BaseCombatEntity
 			{
 				list.AddRange(lootList.GetItems());
 			}
+		}
+		if (Object.op_Implicit((Object)(object)BuriedItems.Instance))
+		{
+			BuriedItems.Instance.AddItems(list, digWorldPos);
 		}
 		DiggableEntityLoot.ItemEntry? result = null;
 		if (list.Count != 0)
@@ -9494,6 +9674,7 @@ using System.Runtime.CompilerServices;
 using ConVar;
 using Facepunch;
 using Facepunch.Extend;
+using Facepunch.Rust;
 using Network;
 using Oxide.Core;
 using ProtoBuf;
@@ -10742,6 +10923,8 @@ public class BaseEntity : BaseNetworkable, IOnParentSpawning, IPrefabPreProcess
 			return Mathf.Clamp01(num);
 		}
 	}
+
+	bool IPrefabPreProcess.CanRunDuringBundling => false;
 
 	public virtual TraitFlag Traits => TraitFlag.None;
 
@@ -12667,25 +12850,42 @@ public class BaseEntity : BaseNetworkable, IOnParentSpawning, IPrefabPreProcess
 			{
 				Debug.Log((object)("SV_RPCMessage: From invalid player " + (object)basePlayer));
 			}
+			return;
 		}
-		else if (ConVar.AntiHack.rpcstallmode > 0 && basePlayer.isStalled)
+		if (ConVar.AntiHack.rpcstallmode > 0 && basePlayer.isStalled)
 		{
 			if (Global.developer > 0)
 			{
 				Debug.Log((object)("SV_RPCMessage: player is stalled " + (object)basePlayer));
 			}
+			return;
 		}
-		else if (ConVar.AntiHack.rpcstallmode > 1 && basePlayer.wasStalled)
+		if (ConVar.AntiHack.rpcstallmode > 1 && basePlayer.wasStalled)
 		{
 			if (Global.developer > 0)
 			{
 				Debug.Log((object)("SV_RPCMessage: player was stalled " + (object)basePlayer));
 			}
+			return;
 		}
-		else if (!OnRpcMessage(basePlayer, nameID, message))
+		(byte[], int) buffer = message.read.GetBuffer();
+		if (OnRpcMessage(basePlayer, nameID, message))
 		{
-			for (int i = 0; i < Components.Count && !Components[i].OnRpcMessage(basePlayer, nameID, message); i++)
+			if (!basePlayer.IsRealNull())
 			{
+				Analytics.Azure.OnServerRPC(basePlayer, nameID, buffer.Item1, buffer.Item2);
+			}
+			return;
+		}
+		for (int i = 0; i < Components.Count; i++)
+		{
+			if (Components[i].OnRpcMessage(basePlayer, nameID, message))
+			{
+				if (!basePlayer.IsRealNull())
+				{
+					Analytics.Azure.OnServerRPC(basePlayer, nameID, buffer.Item1, buffer.Item2);
+				}
+				break;
 			}
 		}
 	}
@@ -13228,11 +13428,9 @@ public class BaseEntity : BaseNetworkable, IOnParentSpawning, IPrefabPreProcess
 		//IL_0173: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0194: Unknown result type (might be due to invalid IL or missing references)
 		//IL_01b5: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0248: Unknown result type (might be due to invalid IL or missing references)
-		//IL_024e: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0082: Unknown result type (might be due to invalid IL or missing references)
-		//IL_021e: Unknown result type (might be due to invalid IL or missing references)
-		//IL_01e4: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0271: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0277: Unknown result type (might be due to invalid IL or missing references)
 		//IL_00c9: Unknown result type (might be due to invalid IL or missing references)
 		//IL_00da: Unknown result type (might be due to invalid IL or missing references)
 		//IL_00df: Unknown result type (might be due to invalid IL or missing references)
@@ -13240,9 +13438,11 @@ public class BaseEntity : BaseNetworkable, IOnParentSpawning, IPrefabPreProcess
 		//IL_009f: Unknown result type (might be due to invalid IL or missing references)
 		//IL_00b8: Unknown result type (might be due to invalid IL or missing references)
 		//IL_00bd: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0398: Unknown result type (might be due to invalid IL or missing references)
-		//IL_039d: Unknown result type (might be due to invalid IL or missing references)
-		//IL_030b: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0247: Unknown result type (might be due to invalid IL or missing references)
+		//IL_020b: Unknown result type (might be due to invalid IL or missing references)
+		//IL_03c1: Unknown result type (might be due to invalid IL or missing references)
+		//IL_03c6: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0334: Unknown result type (might be due to invalid IL or missing references)
 		base.Load(info);
 		if (info.msg.baseEntity != null)
 		{
@@ -13276,6 +13476,13 @@ public class BaseEntity : BaseNetworkable, IOnParentSpawning, IPrefabPreProcess
 			entitySlots[5].uid = info.msg.entitySlots.centerDecoration;
 			entitySlots[6].uid = info.msg.entitySlots.lowerCenterDecoration;
 			entitySlots[7].uid = info.msg.entitySlots.storageMonitor;
+		}
+		else
+		{
+			for (int i = 0; i < entitySlots.Length; i++)
+			{
+				entitySlots[i] = default(EntityRef);
+			}
 		}
 		if (info.msg.parent != null)
 		{
@@ -13324,11 +13531,11 @@ public class BaseEntity : BaseNetworkable, IOnParentSpawning, IPrefabPreProcess
 		{
 			return;
 		}
-		for (int i = 0; i < Components.Count; i++)
+		for (int j = 0; j < Components.Count; j++)
 		{
-			if (!((Object)(object)Components[i] == (Object)null))
+			if (!((Object)(object)Components[j] == (Object)null))
 			{
-				Components[i].LoadComponent(info);
+				Components[j].LoadComponent(info);
 			}
 		}
 	}
@@ -13490,6 +13697,10 @@ public class BaseEntity : BaseNetworkable, IOnParentSpawning, IPrefabPreProcess
 		{
 			((Component)this).gameObject.BroadcastOnParentSpawning();
 		}
+		for (int i = 0; i < entitySlots.Length; i++)
+		{
+			entitySlots[i] = default(EntityRef);
+		}
 	}
 
 	public void OnParentSpawning()
@@ -13503,7 +13714,7 @@ public class BaseEntity : BaseNetworkable, IOnParentSpawning, IPrefabPreProcess
 			Object.Destroy((Object)(object)((Component)this).gameObject);
 			return;
 		}
-		if (GameManager.server.preProcessed.NeedsProcessing(((Component)this).gameObject))
+		if (GameManager.server.preProcessed.NeedsProcessing(((Component)this).gameObject, PreProcessPrefabOptions.Default_NoResetPosition))
 		{
 			GameManager.server.preProcessed.ProcessObject(null, ((Component)this).gameObject, PreProcessPrefabOptions.Default_NoResetPosition);
 		}
@@ -13517,10 +13728,10 @@ public class BaseEntity : BaseNetworkable, IOnParentSpawning, IPrefabPreProcess
 
 	public void SpawnAsMapEntity()
 	{
-		//IL_0084: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0089: Unknown result type (might be due to invalid IL or missing references)
 		if (net == null && !base.IsDestroyed && (Object)(object)(((Object)(object)((Component)this).transform.parent != (Object)null) ? ((Component)((Component)this).transform.parent).GetComponentInParent<BaseEntity>() : null) == (Object)null)
 		{
-			if (GameManager.server.preProcessed.NeedsProcessing(((Component)this).gameObject))
+			if (GameManager.server.preProcessed.NeedsProcessing(((Component)this).gameObject, PreProcessPrefabOptions.Default_NoResetPosition))
 			{
 				GameManager.server.preProcessed.ProcessObject(null, ((Component)this).gameObject, PreProcessPrefabOptions.Default_NoResetPosition);
 			}
@@ -15039,6 +15250,20 @@ public class BaseEntity : BaseNetworkable, IOnParentSpawning, IPrefabPreProcess
 		}
 	}
 
+	public void ClientRPC(RpcTarget target, bool arg1, bool arg2)
+	{
+		//IL_003c: Unknown result type (might be due to invalid IL or missing references)
+		if (((BaseNetwork)Net.sv).IsConnected() && net != null)
+		{
+			GetRpcTargetNetworkGroup(ref target);
+			NetWrite val = ClientRPCStart(target.Function);
+			val.Bool(arg1);
+			val.Bool(arg2);
+			ClientRPCSend(val, target.Connections);
+			FreeRPCTarget(target);
+		}
+	}
+
 	public void ClientRPC(RpcTarget target, ulong arg1, int arg2)
 	{
 		//IL_003c: Unknown result type (might be due to invalid IL or missing references)
@@ -15409,20 +15634,6 @@ public class BaseEntity : BaseNetworkable, IOnParentSpawning, IPrefabPreProcess
 			GetRpcTargetNetworkGroup(ref target);
 			NetWrite val = ClientRPCStart(target.Function);
 			val.Vector3(ref arg1);
-			val.Bool(arg2);
-			ClientRPCSend(val, target.Connections);
-			FreeRPCTarget(target);
-		}
-	}
-
-	public void ClientRPC(RpcTarget target, bool arg1, bool arg2)
-	{
-		//IL_003c: Unknown result type (might be due to invalid IL or missing references)
-		if (((BaseNetwork)Net.sv).IsConnected() && net != null)
-		{
-			GetRpcTargetNetworkGroup(ref target);
-			NetWrite val = ClientRPCStart(target.Function);
-			val.Bool(arg1);
 			val.Bool(arg2);
 			ClientRPCSend(val, target.Connections);
 			FreeRPCTarget(target);
@@ -18315,8 +18526,8 @@ public class BaseFishingRod : HeldEntity
 		Server_Cancel(FailReason.Success);
 	}
 
-	[RPC_Server]
 	[RPC_Server.IsActiveItem]
+	[RPC_Server]
 	private void Server_Cancel(RPCMessage msg)
 	{
 		if (CurrentState != CatchState.Caught)
@@ -18470,6 +18681,40 @@ public class BaseGameMode : BaseEntity
 		public PlayerInventoryProperties[] teamloadouts;
 	}
 
+	[Serializable]
+	public struct ItemRestriction
+	{
+		public ItemDefinition Definition;
+
+		public EraRestriction Restriction;
+	}
+
+	[Serializable]
+	public struct LootTypeModifier
+	{
+		public ItemDefinition.LootDistributionModifierType LootType;
+
+		public int Modifier;
+	}
+
+	[Serializable]
+	public struct CraftingCostMultiplier
+	{
+		public ItemDefinition.LootDistributionModifierType LootType;
+
+		[Range(0f, 20f)]
+		public float Multiplier;
+
+		[Tooltip("Will override the Multiplier if set")]
+		public CraftingCostConVar ConVarToUse;
+	}
+
+	public enum CraftingCostConVar
+	{
+		None,
+		HardcoreFirearmAmmunition
+	}
+
 	private GameMode gameModeScores;
 
 	public string[] scoreColumns;
@@ -18583,11 +18828,28 @@ public class BaseGameMode : BaseEntity
 
 	public float corpseRemovalTimeOverride;
 
+	public bool canRepairIfCraftingBanned;
+
 	public bool hasKillFeed;
 
+	[Header("Map")]
 	public bool allowPings = true;
 
+	public bool fogOfWar;
+
+	public float fogOfWarRevealSize = 256f;
+
+	public bool mapMarkers = true;
+
+	public bool hidePlayerOnMap;
+
+	public bool hideMapPlayerDirectionIndicator;
+
+	public bool hideUndergroundOnMap;
+
 	public BaseMission[] blockedMissions = new BaseMission[0];
+
+	public TechTreeData[] allowedTechTrees = new TechTreeData[0];
 
 	public static BaseGameMode svActiveGameMode = null;
 
@@ -18609,6 +18871,12 @@ public class BaseGameMode : BaseEntity
 	public bool sendKillNotifications;
 
 	public GameModeTeam[] teams;
+
+	public ItemRestriction[] Restrictions;
+
+	public LootTypeModifier[] LootDistributionModifiers = new LootTypeModifier[0];
+
+	public CraftingCostMultiplier[] CraftingCostModifiers = new CraftingCostMultiplier[0];
 
 	private static bool isResetting = false;
 
@@ -19026,40 +19294,41 @@ public class BaseGameMode : BaseEntity
 
 	private void DeleteEntities()
 	{
-		//IL_007d: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0082: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0179: Unknown result type (might be due to invalid IL or missing references)
-		//IL_017e: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0071: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0076: Unknown result type (might be due to invalid IL or missing references)
 		if ((Object)(object)SingletonComponent<ServerMgr>.Instance == (Object)null || !SingletonComponent<ServerMgr>.Instance.runFrameUpdate)
 		{
 			((FacepunchBehaviour)this).Invoke((Action)DeleteEntities, 5f);
 			return;
 		}
-		MonumentInfo[] array = TerrainMeta.Path.Monuments.Where((MonumentInfo x) => x.IsSafeZone).ToArray();
-		foreach (MonumentInfo monumentInfo in array)
+		foreach (MonumentInfo monument in TerrainMeta.Path.Monuments)
 		{
-			List<BaseEntity> list = new List<BaseEntity>();
-			Vis.Entities(new OBB(((Component)monumentInfo).transform, monumentInfo.Bounds), list, -1, (QueryTriggerInteraction)2);
-			foreach (BaseEntity item in list)
+			if (monument.IsSafeZone && !safeZone)
 			{
-				if (!safeZone && (item is HumanNPC || item is NPCAutoTurret || item is Marketplace))
+				List<BaseEntity> list = new List<BaseEntity>();
+				Vis.Entities(new OBB(((Component)monument).transform, monument.Bounds), list, -1, (QueryTriggerInteraction)2);
+				foreach (BaseEntity item in list)
 				{
-					item.Kill();
+					if (item is HumanNPC || item is NPCAutoTurret || item is Marketplace)
+					{
+						item.Kill();
+					}
+					else if (!missionSystem && item is NPCSimpleMissionProvider)
+					{
+						item.Kill();
+					}
 				}
-			}
-			if (!safeZone)
-			{
-				NPCSpawner[] componentsInChildren = ((Component)monumentInfo).GetComponentsInChildren<NPCSpawner>();
-				for (int j = 0; j < componentsInChildren.Length; j++)
+				NPCSpawner[] componentsInChildren = ((Component)monument).GetComponentsInChildren<NPCSpawner>();
+				for (int i = 0; i < componentsInChildren.Length; i++)
 				{
-					componentsInChildren[j].isSpawnerActive = false;
+					componentsInChildren[i].isSpawnerActive = false;
 				}
 			}
 			if (mlrs)
 			{
 				continue;
 			}
-			IndividualSpawner[] componentsInChildren2 = ((Component)monumentInfo).GetComponentsInChildren<IndividualSpawner>();
+			IndividualSpawner[] componentsInChildren2 = ((Component)monument).GetComponentsInChildren<IndividualSpawner>();
 			foreach (IndividualSpawner individualSpawner in componentsInChildren2)
 			{
 				if (individualSpawner.entityPrefab.isValid && individualSpawner.entityPrefab.GetEntity() is MLRS)
@@ -19068,25 +19337,31 @@ public class BaseGameMode : BaseEntity
 				}
 			}
 		}
-		Enumerator<BaseNetworkable> enumerator2 = BaseNetworkable.serverEntities.GetEnumerator();
-		try
+		BaseNetworkable[] array = BaseNetworkable.serverEntities.ToArray();
+		foreach (BaseNetworkable baseNetworkable in array)
 		{
-			while (enumerator2.MoveNext())
+			if (!mlrs && baseNetworkable is MLRS)
 			{
-				BaseNetworkable current2 = enumerator2.Current;
-				if (!mlrs && current2 is MLRS)
-				{
-					current2.Kill();
-				}
-				if (!missionSystem && current2 is NPCMissionProvider)
-				{
-					current2.Kill();
-				}
+				baseNetworkable.Kill();
+			}
+			if (!missionSystem && baseNetworkable is NPCMissionProvider)
+			{
+				baseNetworkable.Kill();
 			}
 		}
-		finally
+		if (mlrs)
 		{
-			((IDisposable)enumerator2/*cast due to .constrained prefix*/).Dispose();
+			return;
+		}
+		for (int j = 0; j < SingletonComponent<SpawnHandler>.Instance.SpawnIndividuals.Count; j++)
+		{
+			SpawnIndividual spawnIndividual = SingletonComponent<SpawnHandler>.Instance.SpawnIndividuals[j];
+			GameObject val = GameManager.server.FindPrefab(spawnIndividual.PrefabID);
+			if ((Object)(object)val != (Object)null && (Object)(object)val.GetComponent<MLRS>() != (Object)null)
+			{
+				SingletonComponent<SpawnHandler>.Instance.SpawnIndividuals.RemoveAt(j);
+				j--;
+			}
 		}
 	}
 
@@ -19242,6 +19517,15 @@ public class BaseGameMode : BaseEntity
 		}
 	}
 
+	public static uint GetActiveGameModeId(bool serverside)
+	{
+		if (!((Object)(object)svActiveGameMode != (Object)null))
+		{
+			return 0u;
+		}
+		return svActiveGameMode.prefabID;
+	}
+
 	public static BaseGameMode GetActiveGameMode(bool serverside)
 	{
 		return svActiveGameMode;
@@ -19354,7 +19638,7 @@ public class BaseGameMode : BaseEntity
 		{
 			try
 			{
-				ConsoleSystem.Run(Option.Server, convar, Array.Empty<object>());
+				ConsoleSystem.Run(Option.Server, convar.ToLower(), Array.Empty<object>());
 			}
 			catch (Exception ex)
 			{
@@ -19505,15 +19789,18 @@ public class BaseGameMode : BaseEntity
 		((FacepunchBehaviour)this).Invoke((Action)ResetMatch, timeBetweenMatches);
 	}
 
-	public virtual void OnNewPlayer(BasePlayer player)
+	public virtual void OnNewPlayer(BasePlayer player, bool shouldSpawnNow)
 	{
-		player.Respawn();
-		if (!AllowsSleeping())
+		if (shouldSpawnNow)
 		{
-			player.EndSleeping();
-			player.SendNetworkUpdateImmediate();
+			player.Respawn();
+			if (!AllowsSleeping())
+			{
+				player.EndSleeping();
+				player.SendNetworkUpdateImmediate();
+			}
+			PostPlayerRespawn(player);
 		}
-		PostPlayerRespawn(player);
 	}
 
 	public void PostPlayerRespawn(BasePlayer player)
@@ -19867,6 +20154,104 @@ public class BaseGameMode : BaseEntity
 		}
 		return false;
 	}
+
+	public int GetLootWeightModifier(ItemDefinition forDefinition)
+	{
+		if ((Object)(object)forDefinition == (Object)null)
+		{
+			return 0;
+		}
+		int num = 0;
+		LootTypeModifier[] lootDistributionModifiers = LootDistributionModifiers;
+		for (int i = 0; i < lootDistributionModifiers.Length; i++)
+		{
+			LootTypeModifier lootTypeModifier = lootDistributionModifiers[i];
+			if ((lootTypeModifier.LootType & forDefinition.lootDistributionType) != 0)
+			{
+				num += lootTypeModifier.Modifier;
+			}
+		}
+		return num;
+	}
+
+	public float GetCraftingCostModifier(ItemDefinition forDefinition)
+	{
+		if ((Object)(object)forDefinition == (Object)null)
+		{
+			return 1f;
+		}
+		CraftingCostMultiplier[] craftingCostModifiers = CraftingCostModifiers;
+		for (int i = 0; i < craftingCostModifiers.Length; i++)
+		{
+			CraftingCostMultiplier craftingCostMultiplier = craftingCostModifiers[i];
+			if ((craftingCostMultiplier.LootType & forDefinition.lootDistributionType) != 0)
+			{
+				if (craftingCostMultiplier.ConVarToUse != 0)
+				{
+					return GetCraftingCostConVar(craftingCostMultiplier.ConVarToUse);
+				}
+				return craftingCostMultiplier.Multiplier;
+			}
+		}
+		return 1f;
+	}
+
+	protected virtual float GetCraftingCostConVar(CraftingCostConVar conVar)
+	{
+		return 1f;
+	}
+
+	public bool IsAllowed(ItemDefinition item, EraRestriction restriction)
+	{
+		//IL_0021: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0025: Unknown result type (might be due to invalid IL or missing references)
+		//IL_002d: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0032: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0033: Unknown result type (might be due to invalid IL or missing references)
+		ItemRestriction[] restrictions = Restrictions;
+		for (int i = 0; i < restrictions.Length; i++)
+		{
+			ItemRestriction itemRestriction = restrictions[i];
+			if ((Object)(object)itemRestriction.Definition == (Object)(object)item && (int)restriction != 0 && (int)itemRestriction.Restriction != 0 && (itemRestriction.Restriction & restriction) == 0)
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	public bool IsAllowed(TechTreeData techTree)
+	{
+		if (allowedTechTrees == null || allowedTechTrees.Length == 0)
+		{
+			return true;
+		}
+		TechTreeData[] array = allowedTechTrees;
+		for (int i = 0; i < array.Length; i++)
+		{
+			if ((Object)(object)array[i] == (Object)(object)techTree)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public bool CanShowPlayerMarkerOnMap(BasePlayer bp)
+	{
+		if (!hidePlayerOnMap)
+		{
+			return true;
+		}
+		foreach (Item item in bp.inventory.containerBelt.itemList)
+		{
+			if (((Component)(object)item.info).HasComponent<ItemModCompass>())
+			{
+				return true;
+			}
+		}
+		return false;
+	}
 }
 
 
@@ -19886,6 +20271,52 @@ public class GameModeTeam
 	public string name;
 
 	public PlayerInventoryProperties[] teamloadouts;
+}
+
+
+using System;
+using Rust;
+
+[Serializable]
+public struct ItemRestriction
+{
+	public ItemDefinition Definition;
+
+	public EraRestriction Restriction;
+}
+
+
+using System;
+
+[Serializable]
+public struct LootTypeModifier
+{
+	public ItemDefinition.LootDistributionModifierType LootType;
+
+	public int Modifier;
+}
+
+
+using System;
+using UnityEngine;
+
+[Serializable]
+public struct CraftingCostMultiplier
+{
+	public ItemDefinition.LootDistributionModifierType LootType;
+
+	[Range(0f, 20f)]
+	public float Multiplier;
+
+	[Tooltip("Will override the Multiplier if set")]
+	public CraftingCostConVar ConVarToUse;
+}
+
+
+public enum CraftingCostConVar
+{
+	None,
+	HardcoreFirearmAmmunition
 }
 
 
@@ -20042,8 +20473,8 @@ public class BaseLauncher : BaseProjectile
 		}
 	}
 
-	[RPC_Server]
 	[RPC_Server.IsActiveItem]
+	[RPC_Server]
 	private void SV_Launch(RPCMessage msg)
 	{
 		//IL_00da: Unknown result type (might be due to invalid IL or missing references)
@@ -20805,7 +21236,7 @@ using UnityEngine.Assertions;
 
 public class BaseLock : BaseEntity
 {
-	[ItemSelector(ItemCategory.All)]
+	[ItemSelector]
 	public ItemDefinition itemType;
 
 	public bool CanRemove = true;
@@ -20894,8 +21325,8 @@ public class BaseLock : BaseEntity
 		return true;
 	}
 
-	[RPC_Server]
 	[RPC_Server.MaxDistance(3f, CheckParent = true)]
+	[RPC_Server]
 	public void RPC_TakeLock(RPCMessage rpc)
 	{
 		if (rpc.player.CanInteract() && CanRemove && Interface.CallHook("CanPickupLock", (object)rpc.player, (object)this) == null && !IsLocked())
@@ -21840,8 +22271,8 @@ public class BaseMelee : AttackEntity
 	}
 
 	[RPC_Server.IsActiveItem]
-	[RPC_Server]
 	[RPC_Server.FromOwner(false)]
+	[RPC_Server]
 	private void CLEntityThrow(RPCMessage msg)
 	{
 		//IL_00f7: Unknown result type (might be due to invalid IL or missing references)
@@ -21940,9 +22371,9 @@ public class BaseMelee : AttackEntity
 	{
 	}
 
+	[RPC_Server]
 	[RPC_Server.FromOwner(false)]
 	[RPC_Server.IsActiveItem]
-	[RPC_Server]
 	private void CLProject(RPCMessage msg)
 	{
 		//IL_01bb: Unknown result type (might be due to invalid IL or missing references)
@@ -22370,9 +22801,9 @@ public class BaseMetalDetector : HeldEntity
 		inRangeSources.Clear();
 	}
 
-	[RPC_Server.FromOwner(false)]
-	[RPC_Server.CallsPerSecond(2uL)]
 	[RPC_Server]
+	[RPC_Server.CallsPerSecond(2uL)]
+	[RPC_Server.FromOwner(false)]
 	private void RPC_RequestFlag(RPCMessage rpc)
 	{
 		//IL_0029: Unknown result type (might be due to invalid IL or missing references)
@@ -22393,9 +22824,9 @@ public class BaseMetalDetector : HeldEntity
 		}
 	}
 
+	[RPC_Server.CallsPerSecond(6uL)]
 	[RPC_Server]
 	[RPC_Server.FromOwner(false)]
-	[RPC_Server.CallsPerSecond(6uL)]
 	public void SV_SetSweetspotScanning(RPCMessage msg)
 	{
 		if (!((Object)(object)msg.player == (Object)null) && !((Object)(object)msg.player != (Object)(object)GetOwnerPlayer()))
@@ -22459,6 +22890,7 @@ public enum DetectState
 using System;
 using System.Collections.Generic;
 using ConVar;
+using Development.Attributes;
 using Facepunch;
 using Facepunch.Rust;
 using Network;
@@ -22468,6 +22900,7 @@ using UnityEngine;
 using UnityEngine.Assertions;
 using UnityEngine.Serialization;
 
+[ResetStaticFields]
 public class BaseMountable : BaseCombatEntity
 {
 	public enum ClippingCheckLocation
@@ -22501,8 +22934,8 @@ public class BaseMountable : BaseCombatEntity
 
 	public static Phrase dismountPhrase = new Phrase("dismount", "Dismount");
 
-	[Header("Base Mountable")]
 	[Header("View")]
+	[Header("Base Mountable")]
 	public Transform eyePositionOverride;
 
 	public Transform eyeCenterOverride;
@@ -22988,8 +23421,8 @@ public class BaseMountable : BaseCombatEntity
 		base.OnDied(info);
 	}
 
-	[RPC_Server.IsVisible(3f)]
 	[RPC_Server]
+	[RPC_Server.IsVisible(3f)]
 	public void RPC_WantsMount(RPCMessage msg)
 	{
 		WantsMount(msg.player);
@@ -23980,8 +24413,8 @@ public class BaseNpc : BaseCombatEntity
 		[Tooltip("How fast can we turn around")]
 		public float TurnSpeed;
 
-		[Range(0f, 1f)]
 		[Tooltip("Determines things like how near we'll allow other species to get")]
+		[Range(0f, 1f)]
 		public float Tolerance;
 
 		[Tooltip("How far this NPC can see")]
@@ -24142,8 +24575,8 @@ public class BaseNpc : BaseCombatEntity
 
 	public float nextAttackTime;
 
-	[SerializeField]
 	[InspectorFlags]
+	[SerializeField]
 	public Enum topologyPreference = (Enum)96;
 
 	[NonSerialized]
@@ -26197,8 +26630,8 @@ public struct AiStatistics
 	[Tooltip("How fast can we turn around")]
 	public float TurnSpeed;
 
-	[Range(0f, 1f)]
 	[Tooltip("Determines things like how near we'll allow other species to get")]
+	[Range(0f, 1f)]
 	public float Tolerance;
 
 	[Tooltip("How far this NPC can see")]
@@ -26386,6 +26819,7 @@ public class BaseOven : StorageContainer, ISplashable, IIndustrialStorage, IAlwa
 
 	private static Dictionary<float, HashSet<ItemDefinition>> _materialOutputCache;
 
+	[Header("Base Oven Settings")]
 	public TemperatureType temperature;
 
 	public Menu.Option switchOnMenu;
@@ -26764,8 +27198,8 @@ public class BaseOven : StorageContainer, ISplashable, IIndustrialStorage, IAlwa
 		Interface.CallHook("OnFuelConsumed", (object)this, (object)fuel, (object)burnable);
 	}
 
-	[RPC_Server.MaxDistance(3f)]
 	[RPC_Server]
+	[RPC_Server.MaxDistance(3f)]
 	protected virtual void SVSwitch(RPCMessage msg)
 	{
 		//IL_007d: Unknown result type (might be due to invalid IL or missing references)
@@ -27294,7 +27728,7 @@ public class BaseOven : StorageContainer, ISplashable, IIndustrialStorage, IAlwa
 	{
 		foreach (CookingItem cookingItem in cookingItems)
 		{
-			if (cookingItem.cookingProgress != 1f)
+			if (base.inventory != null && cookingItem != null && cookingItem.cookingProgress != 1f)
 			{
 				Item slot = base.inventory.GetSlot(cookingItem.slotIndex + _inputSlotIndex);
 				if (slot == null)
